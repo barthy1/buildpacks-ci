@@ -4,7 +4,7 @@ echo BEFORE WRAPPER
 cat << EOF > /bin/wrapper
 #!/usr/bin/env ruby
 system('/etc/profile.d/filter.sh')
-exec(ARGV)
+exec(*ARGV)
 EOF
 
 chmod +x /bin/wrapper

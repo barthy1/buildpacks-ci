@@ -1,0 +1,11 @@
+#!/bin/bash
+
+cat << EOF > /bin/wrapper
+#!/bin/bash -l
+
+/usr/bin/env ruby $@
+EOF
+
+pushd buildpacks-ci
+  /bin/wrapper ./scripts/stacks/test-ruby
+popd

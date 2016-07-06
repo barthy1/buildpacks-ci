@@ -1,4 +1,4 @@
-#!/bin/bash -lc ruby
+#!/usr/bin/env ruby
 # encoding: utf-8
 
 puts "SECRET IS #{ENV['SECRET']}"

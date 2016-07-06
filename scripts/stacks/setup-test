@@ -6,6 +6,8 @@ cat << EOF > /bin/wrapper
 /usr/bin/env ruby $@
 EOF
 
+chmod +x /bin/wrapper
+
 pushd buildpacks-ci
   /bin/wrapper ./scripts/stacks/test-ruby
 popd

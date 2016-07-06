@@ -4,6 +4,7 @@ echo BEFORE WRAPPER
 cat << EOF > /bin/wrapper
 #!/usr/bin/env ruby
 puts 'a'
+puts "ENV['SHELL']"
 %x(. /etc/profile.d/filter.sh)
 puts 'b'
 exec(*ARGV)

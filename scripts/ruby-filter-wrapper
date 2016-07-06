@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+filter_and_execute = "source /etc/profile.d/filter.sh && ruby #{ARGV.join(' ')}"
+exec("/usr/bin/env", "bash", "-c", filter_and_execute)

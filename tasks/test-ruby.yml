@@ -4,4 +4,4 @@ image: docker:///cfbuildpacks/ci
 inputs:
   - name: buildpacks-ci
 run:
-  path: buildpacks-ci/scripts/stacks/setup-test
+  path: buildpacks-ci/scripts/ruby-filter-wrapper buildpacks-ci/scripts/stacks/test-ruby

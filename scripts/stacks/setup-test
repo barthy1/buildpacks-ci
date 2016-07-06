@@ -4,7 +4,9 @@ echo BEFORE WRAPPER
 cat << EOF > /bin/wrapper
 #!/bin/bash -l
 
+echo IN WRAPPER
 /usr/bin/env ruby $@
+echo END OF WRAPPER
 EOF
 echo AFTER WRAPPER
 

@@ -1,0 +1,30 @@
+---
+resources:
+  - name: buildpacks-ci
+    type: git
+    source:
+      uri: {{buildpacks-ci-git-uri-public}}
+      branch: filter
+jobs:
+- name: hello-world
+  plan:
+  - aggregate:
+    - get: buildpacks-ci
+  - do:
+    - task: say-hello
+      config:
+        platform: linux
+        image: docker:///cfbuildpacks/ci
+        run:
+          path: bash
+          args:
+            - -c
+            - "printenv"
+        params:
+          SECRET: password
+          SECRET_PASSWORD_REALLY_LONG_KEYWORD: another_password
+    - task: printenv-task
+      file: buildpacks-ci/tasks/test.yml
+      params:
+        SECRET: password
+        SECRET_PASSWORD_REALLY_LONG_KEYWORD: another_password

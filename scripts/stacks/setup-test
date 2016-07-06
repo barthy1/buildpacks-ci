@@ -1,13 +1,17 @@
 #!/bin/bash
 
+echo BEFORE WRAPPER
 cat << EOF > /bin/wrapper
 #!/bin/bash -l
 
 /usr/bin/env ruby $@
 EOF
+echo AFTER WRAPPER
 
 chmod +x /bin/wrapper
 
 pushd buildpacks-ci
+  echo BEFORE WRAPPER INVOCATION
   /bin/wrapper ./scripts/stacks/test-ruby
+  echo AFTER WRAPPER INVOCATION
 popd

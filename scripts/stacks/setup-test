@@ -6,8 +6,11 @@ cat << EOF > /bin/wrapper
 
 echo IN WRAPPER
 echo $@
+echo "$@"
+echo $*
+echo "$*"
 echo apples
-/usr/bin/env ruby $@
+/usr/bin/env ruby "$@"
 echo END OF WRAPPER
 EOF
 echo AFTER WRAPPER

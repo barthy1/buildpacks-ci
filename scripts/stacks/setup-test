@@ -1,20 +1,8 @@
 #!/bin/bash
 
-echo BEFORE WRAPPER
 cat << EOF > /bin/wrapper
 #!/usr/bin/env ruby
-puts 'a'
-puts ARGV
-puts 'b'
-puts %x{pwd}
-puts %x{ls}
-puts '============'
-puts %x{ls ./scripts}
-puts '============'
-puts %x{ls ./scripts/stacks}
-
 last_arg = "source /etc/profile.d/filter.sh && ruby #{ARGV.join(' ')}"
-puts "LAST ARG IS: #{last_arg}"
 exec("/usr/bin/env", "bash", "-c", last_arg)
 EOF
 
@@ -24,8 +12,5 @@ cat /bin/wrapper
 cat /etc/profile.d/filter.sh
 
 pushd buildpacks-ci
-  echo BEFORE WRAPPER INVOCATION
-  pwd
   /bin/wrapper ./scripts/stacks/test-ruby
-  echo AFTER WRAPPER INVOCATION
 popd

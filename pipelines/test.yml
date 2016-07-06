@@ -11,7 +11,7 @@ jobs:
   - aggregate:
     - get: buildpacks-ci
   - do:
-    - task: say-hello
+    - task: say-hello-normal
       config:
         platform: linux
         image: docker:///cfbuildpacks/ci
@@ -19,6 +19,18 @@ jobs:
           path: bash
           args:
             - -c
+            - "printenv"
+        params:
+          SECRET: password
+          SECRET_PASSWORD_REALLY_LONG_KEYWORD: another_password
+    - task: say-hello-filtered
+      config:
+        platform: linux
+        image: docker:///cfbuildpacks/ci
+        run:
+          path: bash
+          args:
+            - -cl
             - "printenv"
         params:
           SECRET: password

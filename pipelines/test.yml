@@ -35,8 +35,39 @@ jobs:
         params:
           SECRET: password
           SECRET_PASSWORD_REALLY_LONG_KEYWORD: another_password
+    - task: say-hello-normal-through-env
+      config:
+        platform: linux
+        image: docker:///cfbuildpacks/ci
+        run:
+          path: /usr/bin/env
+          args:
+            - bash
+            - -c
+            - "printenv"
+        params:
+          SECRET: password
+          SECRET_PASSWORD_REALLY_LONG_KEYWORD: another_password
+    - task: say-hello-filtered-through-env
+      config:
+        platform: linux
+        image: docker:///cfbuildpacks/ci
+        run:
+          path: /usr/bin/env
+          args:
+            - bash
+            - -cl
+            - "printenv"
+        params:
+          SECRET: password
+          SECRET_PASSWORD_REALLY_LONG_KEYWORD: another_password
     - task: printenv-task
       file: buildpacks-ci/tasks/test.yml
+      params:
+        SECRET: password
+        SECRET_PASSWORD_REALLY_LONG_KEYWORD: another_password
+    - task: printenv-task-with-env
+      file: buildpacks-ci/tasks/test-env.yml
       params:
         SECRET: password
         SECRET_PASSWORD_REALLY_LONG_KEYWORD: another_password

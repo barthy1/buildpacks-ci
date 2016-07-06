@@ -3,7 +3,9 @@
 echo BEFORE WRAPPER
 cat << EOF > /bin/wrapper
 #!/usr/bin/env ruby
-system('/etc/profile.d/filter.sh')
+puts 'a'
+puts system('/etc/profile.d/filter.sh')
+puts 'b'
 exec(*ARGV)
 EOF
 

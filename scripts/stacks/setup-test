@@ -9,6 +9,8 @@ EOF
 
 chmod +x /bin/wrapper
 
+cat /bin/wrapper
+
 pushd buildpacks-ci
   echo BEFORE WRAPPER INVOCATION
   /bin/wrapper ./scripts/stacks/test-ruby

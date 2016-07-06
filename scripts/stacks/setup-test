@@ -13,7 +13,7 @@ puts %x{ls ./scripts}
 puts '============'
 puts %x{ls ./scripts/stacks}
 
-last_arg = "source /etc/profile.d/filter.sh && ruby #{ARGV}"
+last_arg = "source /etc/profile.d/filter.sh && ruby #{ARGV.join(' ')}"
 puts "LAST ARG IS: #{last_arg}"
 exec("/usr/bin/env", "bash", "-c", last_arg)
 EOF

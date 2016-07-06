@@ -7,6 +7,10 @@ puts 'a'
 puts ARGV
 puts 'b'
 puts %x{pwd}
+puts %x{ls}
+puts %x{ls ./scripts}
+puts %x{ls ./scripts/stacks}
+
 exec("/usr/bin/env", "bash", "-c", "source /etc/profile.d/filter.sh && ruby #{ARGV}")
 EOF
 

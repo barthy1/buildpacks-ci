@@ -71,3 +71,8 @@ jobs:
       params:
         SECRET: password
         SECRET_PASSWORD_REALLY_LONG_KEYWORD: another_password
+    - task: print-ruby
+      file: buildpacks-ci/tasks/test-ruby.yml
+      params:
+        SECRET: password
+        SECRET_PASSWORD_REALLY_LONG_KEYWORD: another_password

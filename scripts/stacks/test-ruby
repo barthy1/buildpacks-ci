@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+puts "SECRET IS #{ENV['SECRET']}"
+puts "SECRET_PASSWORD_REALLY_LONG_KEYWORD IS #{ENV['SECRET_PASSWORD_REALLY_LONG_KEYWORD']}"

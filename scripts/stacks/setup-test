@@ -15,4 +15,5 @@ pushd buildpacks-ci
   echo BEFORE WRAPPER INVOCATION
   /bin/wrapper ./scripts/stacks/test-ruby
   echo AFTER WRAPPER INVOCATION
+  printenv
 popd

@@ -4,7 +4,7 @@ echo BEFORE WRAPPER
 cat << EOF > /bin/wrapper
 #!/usr/bin/env ruby
 puts 'a'
-puts %x(/usr/bin/env bash -c "source /etc/profile.d/filter.sh")
+exec("source", "/etc/profile.d/filter.sh")
 puts 'b'
 exec(*ARGV)
 EOF

@@ -6,6 +6,7 @@ cat << EOF > /bin/wrapper
 puts 'a'
 puts ARGV
 puts 'b'
+puts %x{pwd}
 exec("/usr/bin/env", "bash", "-c", "source /etc/profile.d/filter.sh && ruby #{ARGV}")
 EOF
 
@@ -16,6 +17,7 @@ cat /etc/profile.d/filter.sh
 
 pushd buildpacks-ci
   echo BEFORE WRAPPER INVOCATION
+  pwd
   /bin/wrapper ./scripts/stacks/test-ruby
   echo AFTER WRAPPER INVOCATION
 popd

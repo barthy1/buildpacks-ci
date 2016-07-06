@@ -16,7 +16,8 @@ cat /etc/profile.d/filter.sh
 
 pushd buildpacks-ci
   echo BEFORE WRAPPER INVOCATION
-  /bin/wrapper ./scripts/stacks/test-ruby
+  source /etc/profile.d/filter.sh
+  #/bin/wrapper ./scripts/stacks/test-ruby
   echo AFTER WRAPPER INVOCATION
   printenv
 popd

@@ -2,18 +2,10 @@
 
 echo BEFORE WRAPPER
 cat << EOF > /bin/wrapper
-#!/bin/bash -l
-
-echo IN WRAPPER
-echo $@
-echo "$@"
-echo $*
-echo "$*"
-echo apples
-/usr/bin/env ruby "$@"
-echo END OF WRAPPER
+#!/usr/bin/env ruby
+`/etc/profile.d/filter.sh`
+exec(ARGV)
 EOF
-echo AFTER WRAPPER
 
 chmod +x /bin/wrapper
 

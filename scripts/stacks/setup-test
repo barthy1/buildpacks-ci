@@ -5,6 +5,8 @@ cat << EOF > /bin/wrapper
 #!/bin/bash -l
 
 echo IN WRAPPER
+echo $@
+echo apples
 /usr/bin/env ruby $@
 echo END OF WRAPPER
 EOF

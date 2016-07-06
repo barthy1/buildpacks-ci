@@ -24,6 +24,6 @@ cat /etc/profile.d/filter.sh
 pushd buildpacks-ci
   echo BEFORE WRAPPER INVOCATION
   pwd
-  /bin/wrapper ./scripts/stacks/test-ruby
+  /bin/wrapper /tmp/build/52f212af/buildpacks-ci/scripts/stacks/test-ruby
   echo AFTER WRAPPER INVOCATION
 popd

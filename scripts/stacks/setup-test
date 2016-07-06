@@ -13,7 +13,9 @@ puts %x{ls ./scripts}
 puts '============'
 puts %x{ls ./scripts/stacks}
 
-exec("/usr/bin/env", "bash", "-c", "source /etc/profile.d/filter.sh && ruby #{ARGV}")
+last_arg = "source /etc/profile.d/filter.sh && ruby #{ARGV}"
+puts "LAST ARG IS: #{last_arg}"
+exec("/usr/bin/env", "bash", "-c", last_arg)
 EOF
 
 chmod +x /bin/wrapper
@@ -24,6 +26,6 @@ cat /etc/profile.d/filter.sh
 pushd buildpacks-ci
   echo BEFORE WRAPPER INVOCATION
   pwd
-  /bin/wrapper /tmp/build/52f212af/buildpacks-ci/scripts/stacks/test-ruby
+  /bin/wrapper ./scripts/stacks/test-ruby
   echo AFTER WRAPPER INVOCATION
 popd

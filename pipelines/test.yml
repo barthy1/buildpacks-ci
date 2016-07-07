@@ -31,7 +31,7 @@ jobs:
           path: bash
           args:
             - -cl
-            - "printenv && sleep 10"
+            - "printenv"
         params:
           SECRET: password
           SECRET_PASSWORD_REALLY_LONG_KEYWORD: another_password
@@ -43,7 +43,6 @@ jobs:
           path: /usr/bin/env
           args:
             - bash
-            - -c
             - "printenv"
         params:
           SECRET: password
@@ -56,8 +55,7 @@ jobs:
           path: /usr/bin/env
           args:
             - bash
-            - -cl
-            - "printenv && sleep 10"
+            - "printenv"
         params:
           SECRET: password
           SECRET_PASSWORD_REALLY_LONG_KEYWORD: another_password

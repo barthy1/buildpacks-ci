@@ -25,7 +25,7 @@ def set_pipeline(target_name:,name:, cmd:, load: [])
 end
 
 header('For standard pipelines')
-Dir['pipelines/*.yml'].each do |filename|
+Dir['pipelines/test.yml'].each do |filename|
   name = File.basename(filename, '.yml')
   puts "   #{name} pipeline"
   set_pipeline(target_name: target_name,name: name, cmd: "erb concourse_url=#{concourse_url} #{filename}")

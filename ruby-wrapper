@@ -1,0 +1,5 @@
+#!/bin/bash -l
+
+echo "reached"
+/usr/local/bin/actual-ruby $@
+sleep 5

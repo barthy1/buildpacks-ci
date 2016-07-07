@@ -67,3 +67,7 @@ RUN git clone https://github.com/awslabs/git-secrets && cd git-secrets && make i
 
 # Ensure that Concoure filtering is on for non-interactive shells
 ENV BASH_ENV /etc/profile.d/filter.sh
+
+RUN mv /usr/local/bin/ruby /usr/local/bin/actual-ruby
+COPY ruby-wrapper /etc/ruby-wrapper
+RUN ln -s /etc/ruby-wrapper /usr/local/bin/ruby

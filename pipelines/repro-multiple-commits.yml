@@ -7,7 +7,7 @@ resources:
       branch: multiple-commit-repro
       private_key: {{buildpacks-ci-private-key}}
 jobs:
-  - name: merge-to-master
+  - name: make-multiple-commits
     serial: true
     plan:
       - aggregate:
@@ -18,6 +18,8 @@ jobs:
           image: docker:///cfbuildpacks/ci
           inputs:
             - name: buildpacks-ci
+          outputs:
+            - name: buildpacks-ci-artifacts
           run:
             path: bash
             args:
@@ -33,7 +35,9 @@ jobs:
                 echo cool3 >> test1
                 git add test1
                 git commit -m "third commit"
+                popd
+                rsync -a buildpacks-ci/ buildpacks-ci-artifacts
       - put: buildpacks-ci
         params:
-          repository: buildpacks-ci
+          repository: buildpacks-ci-artifacts
           rebase: true

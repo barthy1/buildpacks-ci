@@ -1,0 +1,39 @@
+---
+resources:
+  - name: buildpacks-ci
+    type: git
+    source:
+      uri: {{buildpacks-ci-git-uri}}
+      branch: multiple-commit-repro
+      private_key: {{buildpacks-ci-private-key}}
+jobs:
+  - name: merge-to-master
+    serial: true
+    plan:
+      - aggregate:
+        - get: buildpacks-ci
+      - task: multiple-commits
+        config:
+          platform: linux
+          image: docker:///cfbuildpacks/ci
+          inputs:
+            - name: buildpacks-ci
+          run:
+            path: bash
+            args:
+              - -cl
+              - |
+                pushd buildpacks-ci
+                echo cool1 >> test1
+                git add test1
+                git commit -m "first commit"
+                echo cool2 >> test1
+                git add test1
+                git commit -m "second commit"
+                echo cool3 >> test1
+                git add test1
+                git commit -m "third commit"
+      - put: buildpacks-ci
+        params:
+          repository: buildpacks-ci
+          rebase: true

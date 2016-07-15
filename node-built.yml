@@ -1,2 +1,5 @@
 ---
-node: []
+node:
+- version: 6.3.0
+  sha256: 4ed7a99985f8afee337cc22d5fef61b495ab4238dfff3750ac9019e87fc6aae6
+  timestamp: 2016-07-15 19:29:08 UTC

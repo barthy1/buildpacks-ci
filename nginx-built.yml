@@ -1,2 +1,17 @@
 ---
-nginx: []
+nginx:
+- version: 1.11.2
+  gpg-rsa-key-id: A1C052F8
+  gpg-signature: |
+    -----BEGIN PGP SIGNATURE-----
+    Version: GnuPG v2
+
+    iQEcBAABCAAGBQJXe9mFAAoJEFIKmZOhwFL4Ix4H/0L+M1e2p1lA4Wihf36Vk0OL
+    JBTz7/ludPDwTTwMI1EfReU5zx3Ctx9pmKurXoOWSb04R59lLCjEHlwM6PgHbG25
+    +xmnQYlMYRsGY/P9aV3VTmomccXjCbtWeTwEceE5NK2Xsm3jqObJhuTvvHBw5oaF
+    IJiElpzeWidkXI3vaUtCZREP46LZeGb7BNCzz8RvWtGW4ZlOfMn9ELkzFBm99KTA
+    aXT9bSOn6tIApxPyPYxRopVrWrkMNr9WBX/8XzDdjX+8RItC1xsIdH2lbC9oPKiE
+    KKMWmcV7dEjpXLEeI7MKi3OtThCzsFArTEDYVvFruAXjDbZiidCr0DZB4To2Lnc=
+    =zDLQ
+    -----END PGP SIGNATURE-----
+  timestamp: 2016-07-15 19:19:57 UTC

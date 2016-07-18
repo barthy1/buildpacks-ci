@@ -5,23 +5,6 @@ require 'yaml'
 require 'digest'
 require 'fileutils'
 
-def add_ssh_key_and_update(dir, repo)
-  File.write("/tmp/git_ssh_key",ENV['GIT_SSH_KEY'])
-  system(<<-HEREDOC)
-    eval "$(ssh-agent)"
-    mkdir -p ~/.ssh
-    ssh-keyscan -t rsa github.com > ~/.ssh/known_hosts
-
-    set +x
-    chmod 600 /tmp/git_ssh_key
-    ssh-add -D
-    ssh-add /tmp/git_ssh_key
-    set -x
-    cd #{dir}
-    git checkout #{repo}
-    git pull -r
-  HEREDOC
-end
 
 def is_automated(binary)
   automated = %w(composer godep glide nginx node)
@@ -39,7 +22,6 @@ end
 
 #get latest version of <binary>-built.yml
 built_dir    = File.join(Dir.pwd, 'built-yaml')
-add_ssh_key_and_update(built_dir, "binary-builds-test")
 
 binary_name  = ENV['BINARY_NAME']
 builds_dir   = File.join(Dir.pwd, 'builds-yaml')

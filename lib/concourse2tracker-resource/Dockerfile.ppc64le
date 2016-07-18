@@ -1,0 +1,9 @@
+FROM ppc64le/ubuntu:14.04
+
+RUN apt-get update && apt-get install -y ruby \
+  git \
+  ruby-json \
+  ca-certificates
+
+ADD /scripts /opt/resource
+RUN chmod +x /opt/resource/*

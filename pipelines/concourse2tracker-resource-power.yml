@@ -1,0 +1,48 @@
+
+resources:
+  - name: buildpacks-ci
+    type: git
+    source:
+      uri: https://github.com/barthy1/buildpacks-ci
+      paths: [ "lib/concourse2tracker-resource" ]
+  - name: concourse2tracker-image
+    type: docker-image
+    source:
+     repository: docker://140.211.168.31:5000/concourse2tracker-image
+     insecure_registries: ["140.211.168.31:5000"]
+
+jobs:
+  - name: concourse2tracker-build
+    serial: true
+    plan:
+      - get: buildpacks-ci
+        trigger: true
+      - task: rspec
+        privileged: true
+        config:
+          platform: ppc64le
+          image_resource:
+            type: docker-image
+            source:
+              repository: 140.211.168.31:5000/buildpacks/ci
+              insecure_registries: ["140.211.168.31:5000"]
+          inputs:
+            - name: buildpacks-ci
+          run:
+            path: bash
+            args:
+              - -c
+              - |
+                cd buildpacks-ci/lib/concourse2tracker-resource
+                bundle
+                bundle exec rspec
+      - put: concourse2tracker-image
+        params:
+          build: buildpacks-ci/lib/concourse2tracker-resource
+          push: true
+resource_types:
+- name: docker-image
+  type: docker-image
+  source:
+    repository: 140.211.168.31:5000/docker-image-resource-new
+    insecure_registries: ["140.211.168.31:5000"]

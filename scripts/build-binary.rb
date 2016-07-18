@@ -21,7 +21,6 @@ end
 # built.yml
 
 #get latest version of <binary>-built.yml
-built_dir    = File.join(Dir.pwd, 'built-yaml')
 
 binary_name  = ENV['BINARY_NAME']
 builds_dir   = File.join(Dir.pwd, 'builds-yaml')
@@ -29,10 +28,8 @@ builds_yaml_artifacts = File.join(Dir.pwd, 'builds-yaml-artifacts')
 builds_path  = File.join(builds_dir, "#{binary_name}-builds.yml")
 
 builds       = YAML.load_file(builds_path)
-built        = YAML.load_file(File.join(built_dir, "#{binary_name}-built.yml"))
 
 latest_build = builds[binary_name].shift
-built[binary_name].push latest_build
 
 unless latest_build
   puts "There are no new builds for #{binary_name} requested."
@@ -89,11 +86,6 @@ if !is_automated(binary_name)
   File.write(builds_path, builds.to_yaml)
   files_to_add += "#{builds_path} "
 end
-
-built[binary_name][-1]["timestamp"] = Time.now.utc.to_s
-built_output = File.join(builds_dir, "#{binary_name}-built.yml")
-File.write(built_output, built.to_yaml)
-files_to_add += built_output
 
 Dir.chdir(builds_dir) do
   exec(<<-EOF)

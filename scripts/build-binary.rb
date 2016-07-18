@@ -58,8 +58,8 @@ else
   Dir.chdir('binary-builder') do
     @binary_builder_output = `./bin/binary-builder #{flags}`
     raise "Could not build" unless $?.success?
-    if Dir.exist?("/tmp/x86_64-linux-gnu/")
-      system('tar -zcf build.tgz -C /tmp ./x86_64-linux-gnu/') or raise "Could not create tar"
+    if Dir.exist?("/tmp/powerpc64le-linux-gnu/")
+      system('tar -zcf build.tgz -C /tmp ./powerpc64le-linux-gnu/') or raise "Could not create tar"
     end
   end
   FileUtils.cp_r(Dir["binary-builder/*.tgz"], "binary-builder-artifacts/")

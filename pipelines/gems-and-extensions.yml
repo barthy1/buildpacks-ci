@@ -1,0 +1,183 @@
+---
+resources:
+  - name: buildpacks-ci
+    type: git
+    source:
+      uri: {{buildpacks-ci-git-uri-public}}
+      branch:  {{buildpacks-ci-git-uri-public-branch}}
+  - name: deployments-buildpacks
+    type: git
+    source:
+      uri: {{deployments-git-uri}}
+      private_key: {{deployments-private-key}}
+  - name: buildpack-packager
+    type: git
+    source:
+      uri: {{buildpack-packager-git-uri}}
+      branch: master
+      private_key: {{buildpack-packager-private-key}}
+  - name: buildpack-packager-github-release
+    type: github-release
+    source:
+      user: {{buildpacks-github-org}}
+      repository: buildpack-packager
+      access_token: {{buildpacks-github-token}}
+  - name: machete
+    type: git
+    source:
+      uri: {{machete-git-uri}}
+      branch: master
+      private_key: {{machete-private-key}}
+  - name: machete-github-release
+    type: github-release
+    source:
+      user: {{buildpacks-github-org}}
+      repository: machete
+      access_token: {{buildpacks-github-token}}
+  - name: compile-extensions
+    type: git
+    source:
+      uri: https://github.com/cloudfoundry/compile-extensions.git
+  - name: cf-edge-environments
+    type: pool
+    source:
+      branch: resource-pools
+      pool: cf-edge-environments
+      private_key: {{buildpacks-ci-private-key}}
+      uri: {{buildpacks-ci-git-uri}}
+  - name: cf-release
+    type: git
+    source:
+      uri: {{cf-release-git-uri}}
+  - name: nanny-time-resource
+    type: time
+    source:
+      interval: 12h
+      start: 7:00 -0400
+      stop: 12:00 -0400
+jobs:
+  - name: buildpack-packager-specs
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: buildpacks-ci
+        - get: buildpack-packager
+          trigger: true
+      - task: run-buildpack-packager-specs
+        file: buildpacks-ci/tasks/run-buildpack-packager-specs.yml
+        privileged: true
+        params:
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
+  - name: buildpack-packager-tag
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: buildpacks-ci
+        - get: buildpack-packager
+          passed: [ buildpack-packager-specs ]
+      - task: bump-buildpack-packager-version
+        file: buildpacks-ci/tasks/bump-buildpack-packager-version.yml
+        params:
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
+      - put: buildpack-packager
+        params:
+          repository: buildpack-packager-artifacts
+          tag: buildpack-packager-artifacts/VERSION
+          tag_prefix: v
+  - name: buildpack-packager-release
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: buildpacks-ci
+        - get: buildpack-packager
+          passed: [ buildpack-packager-tag ]
+          trigger: true
+      - task: create-new-buildpack-packager-release
+        file: buildpacks-ci/tasks/release-buildpack-packager.yml
+        privileged: true
+        params:
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
+      - put: buildpack-packager-github-release
+        params:
+          name: buildpack-packager-artifacts/tag
+          tag: buildpack-packager-artifacts/tag
+          globs:
+            - buildpack-packager-artifacts/buildpack-packager-v*.zip
+            - buildpack-packager-artifacts/buildpack-packager-v*.tar.gz
+  - name: machete-specs
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: buildpacks-ci
+        - get: machete
+          trigger: true
+      - put: cf-environments
+        resource: cf-edge-environments
+        params:
+          acquire: true
+      - task: run-machete-specs
+        file: buildpacks-ci/tasks/run-machete-specs.yml
+        params:
+          CF_PASSWORD: {{ci-cf-password}}
+          DOMAIN_NAME: {{domain-name}}
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
+        privileged: true
+        ensure:
+          put: cf-edge-environments
+          params:
+            release: cf-environments
+  - name: machete-tag
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: buildpacks-ci
+        - get: machete
+          passed: [ machete-specs ]
+      - task: bump-machete-version
+        file: buildpacks-ci/tasks/bump-machete-version.yml
+        params:
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
+      - put: machete
+        params:
+          repository: machete-artifacts
+          tag: machete-artifacts/VERSION
+          tag_prefix: v
+  - name: machete-release
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: buildpacks-ci
+        - get: machete
+          passed: [ machete-tag ]
+          trigger: true
+      - task: create-new-machete-release
+        file: buildpacks-ci/tasks/release-machete.yml
+        privileged: true
+        params:
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
+      - put: machete-github-release
+        params:
+          name: machete-artifacts/tag
+          tag: machete-artifacts/tag
+          globs:
+            - machete-artifacts/machete-v*.zip
+            - machete-artifacts/machete-v*.tar.gz
+  - name: compile-extensions
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: buildpacks-ci
+        - get: compile-extensions
+          trigger: true
+      - task: run-compile-extensions-specs
+        file: buildpacks-ci/tasks/run-compile-extensions-specs.yml
+        privileged: true
+        params:
+          RUBYGEM_MIRROR: {{rubygem-mirror}}

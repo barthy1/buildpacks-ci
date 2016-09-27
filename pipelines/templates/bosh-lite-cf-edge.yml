@@ -3,11 +3,11 @@ resources:
     type: cron
     source:
       expression: <%= deployment_name.bytes.reduce(&:+) % 10 %> 0 * * *
-      location: America/New_York
+      location: {{current-timezone}}
   - name: cf-deployment
     type: bosh-deployment
     source:
-      target: https://{{deployment-name}}.cf-app.com:25555
+      target: https://<%= full_deployment_name +  '.' + domain_name %>:25555
       username: admin
       password: {{bosh-lite-password}}
       deployment: cf-warden
@@ -15,7 +15,7 @@ resources:
   - name: diego-deployment
     type: bosh-deployment
     source:
-      target: https://{{deployment-name}}.cf-app.com:25555
+      target: https://<%= full_deployment_name +  '.' + domain_name %>:25555
       username: admin
       password: {{bosh-lite-password}}
       deployment: cf-warden-diego
@@ -23,7 +23,7 @@ resources:
   - name: deployments-buildpacks
     type: git
     source:
-      uri: git@github.com:pivotal-cf/deployments-buildpacks
+      uri: {{deployments-git-uri}}
       private_key: {{deployments-private-key}}
       branch: master
   - name: bosh-lite
@@ -41,10 +41,11 @@ resources:
     type: git
     source:
       uri: {{buildpacks-ci-git-uri-public}}
+      branch: {{buildpacks-ci-git-uri-public-branch}}
   - name: machete
     type: git
     source:
-      uri: https://github.com/cloudfoundry/machete.git
+      uri: {{machete-git-uri-public}}
       branch: master
   - name: cflinuxfs2-rootfs-bosh-release
     type: bosh-io-release
@@ -81,6 +82,7 @@ jobs:
   - name: checkout-environment
     serial_groups: [ deploy ]
     serial: true
+    public: true
     plan:
       - get: nightly-trigger
         trigger: true
@@ -91,6 +93,7 @@ jobs:
   - name: recreate-bosh-lite
     serial_groups: [ deploy ]
     serial: true
+    public: true
     plan:
       - do:
         - aggregate:
@@ -100,14 +103,16 @@ jobs:
             passed: [checkout-environment]
             trigger: true
         - task: recreate-bosh-lite
-          file: buildpacks-ci/tasks/recreate-bosh-lite.yml
+          file: buildpacks-ci/tasks/recreate-bosh-lite/task.yml
           params:
             IAAS: {{iaas}}
-            AZURE_BOSH_USER: {{azure-bosh-user}}
-            AZURE_BOSH_PASSWORD: {{azure-bosh-password}}
+            AZURE_BOSH_DIRECTOR_USER: {{azure-bosh-director-user}}
+            AZURE_BOSH_DIRECTOR_PASSWORD: {{azure-bosh-director-password}}
             AZURE_BOSH_LITE_NAME: {{bosh-lite-name}}
+            GCP_BOSH_DIRECTOR_USER: {{gcp-bosh-director-user}}
+            GCP_BOSH_DIRECTOR_PASSWORD: {{gcp-bosh-director-password}}
+            GCP_BOSH_LITE_NAME: {{bosh-lite-name}}
             DEPLOYMENT_NAME: {{deployment-name}}
-            PASSWORD: {{bosh-lite-password}}
             BOSH_PRIVATE_KEY: {{bosh_private_key}}
             BOSH_USER: {{bosh_user}}
             BOSH_PASSWORD: {{bosh_password}}
@@ -119,9 +124,10 @@ jobs:
             BOSH_LITE_SUBNET_ID: {{buildpacks_ci_bosh_lite_subnet_id}}
             BOSH_LITE_DISK_SIZE: 100
             BOSH_GATEWAY_USER: {{buildpacks_ci_bosh_gateway_user}}
-            BOSH_TARGET: <%= full_deployment_name + ".cf-app.com" %>
+            BOSH_TARGET: <%= full_deployment_name +  '.' + domain_name %>
             BOSH_LITE_NAME: {{deployment-name}}
             RUBYGEM_MIRROR: {{rubygem-mirror}}
+            DOMAIN_NAME: {{domain-name}}
           ensure:
             put: deployments-buildpacks
             params:
@@ -135,6 +141,7 @@ jobs:
   - name: generate-manifest
     serial_groups: [ deploy ]
     serial: true
+    public: true
     plan:
       - do:
         - aggregate:
@@ -169,9 +176,10 @@ jobs:
             BOSH_LITE_SUBNET_ID: {{buildpacks_ci_bosh_lite_subnet_id}}
             BOSH_LITE_DISK_SIZE: 100
             BOSH_GATEWAY_USER: {{buildpacks_ci_bosh_gateway_user}}
-            BOSH_TARGET: <%= full_deployment_name + ".cf-app.com" %>
+            BOSH_TARGET: <%= full_deployment_name +  '.' + domain_name %>
             BOSH_LITE_NAME: {{deployment-name}}
             RUBYGEM_MIRROR: {{rubygem-mirror}}
+            DOMAIN_NAME: {{domain-name}}
           privileged: true
         - put: deployments-buildpacks
           params:
@@ -184,6 +192,7 @@ jobs:
   - name: deploy-cf
     serial_groups: [ deploy ]
     serial: true
+    public: true
     plan:
       - do:
         - aggregate:
@@ -210,6 +219,7 @@ jobs:
   - name: deploy-diego
     serial_groups: [ deploy ]
     serial: true
+    public: true
     plan:
       - do:
         - aggregate:
@@ -241,7 +251,7 @@ jobs:
   - name: update-machete
     serial_groups: [ deploy ]
     serial: true
-    serial: true
+    public: true
     plan:
       - do:
         - aggregate:
@@ -256,7 +266,7 @@ jobs:
         - task: configure-deployment
           file: buildpacks-ci/tasks/machete-configure-deployment.yml
           params:
-            BOSH_TARGET: <%= full_deployment_name + ".cf-app.com" %>
+            BOSH_TARGET: <%= full_deployment_name +  '.' + domain_name %>
             DEPLOYMENT_NAME: {{deployment-name}}
             CI_CF_PASSWORD: {{ci-cf-password}}
             CI_CF_USERNAME: {{ci-cf-username}}
@@ -267,6 +277,7 @@ jobs:
   - name: unclaim
     serial_groups: [ deploy ]
     serial: true
+    public: true
     plan:
       - get: buildpacks-ci
       - get: resource-pools

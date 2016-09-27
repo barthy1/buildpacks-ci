@@ -14,12 +14,13 @@ resources:
     type: git
     source:
       uri: {{buildpacks-ci-git-uri-public}}
-      branch: develop
+      branch: {{buildpacks-ci-git-uri-public-develop-branch}}
   - name: concourse2tracker
     type: concourse2tracker
 jobs:
   - name: merge-to-master
     serial: true
+    public: true
     plan:
       - aggregate:
         - get: ci-master
@@ -34,11 +35,11 @@ jobs:
           GITHUB_USERNAME: {{github-username}}
           GITHUB_PASSWORD: {{github-password}}
           GITHUB_ACCESS_TOKEN: {{buildpacks-github-token}}
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
         privileged: true
       - put: ci-master
         params:
           repository: buildpacks-ci
-          rebase: true
       - put: concourse2tracker
         params:
           git_path: buildpacks-ci

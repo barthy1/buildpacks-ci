@@ -13,6 +13,7 @@ resources:
     type: git
     source:
       uri: {{buildpacks-ci-git-uri-public}}
+      branch:  {{buildpacks-ci-git-uri-public-branch}}
   - name: cf-edge-environments
     type: pool
     source:
@@ -29,9 +30,10 @@ resources:
       uri: {{buildpacks-ci-git-uri}}
 
 jobs:
-<% %w(go python nodejs php hhvm ruby jruby).each do |language| %>
+<% %w(go python nodejs php ruby jruby).each do |language| %>
   - name: brats-<%= language %>-lts
     serial: true
+    public: true
     plan:
       - put: cf-environments
         resource: cf-lts-environments
@@ -48,6 +50,8 @@ jobs:
           LANGUAGE: <%= language %>
           CI_CF_USERNAME: {{ci-cf-username}}
           CI_CF_PASSWORD: {{ci-cf-password}}
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
+          DOMAIN_NAME: {{domain-name}}
         privileged: true
         ensure:
           put: cf-lts-environments
@@ -55,6 +59,7 @@ jobs:
             release: cf-environments
   - name: brats-<%= language %>-edge
     serial: true
+    public: true
     plan:
       - put: cf-environments
         resource: cf-edge-environments
@@ -71,6 +76,8 @@ jobs:
           LANGUAGE: <%= language %>
           CI_CF_USERNAME: {{ci-cf-username}}
           CI_CF_PASSWORD: {{ci-cf-password}}
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
+          DOMAIN_NAME: {{domain-name}}
         privileged: true
         ensure:
           put: cf-edge-environments
@@ -79,6 +86,7 @@ jobs:
 <% end %>
   - name: brats-safe-edge
     serial: true
+    public: true
     plan:
       - put: cf-environments
         resource: cf-edge-environments
@@ -95,6 +103,8 @@ jobs:
           LANGUAGE: safe
           CI_CF_USERNAME: {{ci-cf-username}}
           CI_CF_PASSWORD: {{ci-cf-password}}
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
+          DOMAIN_NAME: {{domain-name}}
         privileged: true
         ensure:
           put: cf-edge-environments
@@ -102,6 +112,7 @@ jobs:
             release: cf-environments
   - name: brats-safe-lts
     serial: true
+    public: true
     plan:
       - put: cf-environments
         resource: cf-lts-environments
@@ -118,6 +129,8 @@ jobs:
           LANGUAGE: safe
           CI_CF_USERNAME: {{ci-cf-username}}
           CI_CF_PASSWORD: {{ci-cf-password}}
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
+          DOMAIN_NAME: {{domain-name}}
         privileged: true
         ensure:
           put: cf-lts-environments

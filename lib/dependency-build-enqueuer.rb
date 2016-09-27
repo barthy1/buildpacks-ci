@@ -1,5 +1,6 @@
 # encoding: utf-8
 require 'yaml'
+require_relative 'git-client'
 
 class DependencyBuildEnqueuer
   attr_reader :dependency
@@ -18,24 +19,20 @@ class DependencyBuildEnqueuer
   end
 
   def enqueue_build
-    # node currently uses the node-new.yaml file to get a list of the new
-    # versions to build. The plan is to eventually migrate the rest of the
-    # dependencies to use a similar file as well
+    # We use the <dependency>-new.yaml file to get a list of the new
+    # versions to build. For each version in this file, we make a commit to
+    # <dependency>-builds.yaml with the proper build information
+    # Automated deps: node, nginx, glide, godep, composer
 
-    if dependency == "node" || dependency == "nginx"
-      new_dependency_versions_file = File.join(new_releases_dir, "#{dependency}-new.yaml")
-      new_dependency_versions = YAML.load_file(new_dependency_versions_file)
-    else
-      dependency_versions_file = File.join(new_releases_dir, "#{dependency}.yaml")
-      dependency_versions = YAML.load_file(dependency_versions_file)
-      @latest_version = DependencyBuildEnqueuer.latest_version_for_dependency(dependency, dependency_versions, options)
-      new_dependency_versions = [latest_version]
-    end
+    new_dependency_versions_file = File.join(new_releases_dir, "#{dependency}-new.yaml")
+    new_dependency_versions = YAML.load_file(new_dependency_versions_file)
 
     dependency_builds_file = File.join(binary_builds_dir, "#{dependency}-builds.yml")
 
     new_dependency_versions.each do |ver|
-      ver = massage_version(ver)
+      next if prerelease_version?(ver)
+      ver = massage_version_for_manifest_format(ver)
+
       new_build = {"version" => ver}
       dependency_verification_tuples = DependencyBuildEnqueuer.build_verifications_for(dependency, ver)
       dependency_verification_tuples.each do |dependency_verification_type, dependency_verification_value|
@@ -47,48 +44,34 @@ class DependencyBuildEnqueuer
       end
 
       Dir.chdir(binary_builds_dir) do
-        puts `git add #{dependency_builds_file}`
+        GitClient.add_file(dependency_builds_file)
         commit_msg = "Enqueue #{dependency} - #{ver}"
-        puts `git commit -m '#{commit_msg}'`
+        GitClient.safe_commit(commit_msg)
       end
     end
   end
 
   private
 
-  def self.latest_version_for_dependency(dependency, dependency_versions, options = {})
+  def massage_version_for_manifest_format(version)
     case dependency
-    when "godep"
-      dependency_versions.max { |a, b| a.gsub("v", "").to_i <=> b.gsub("v", "").to_i }
-    when "composer"
-      dependency_versions.map do |version|
-        gem_version = Gem::Version.new(version)
-        if !options[:pre]
-          gem_version = gem_version.prerelease? ? nil : gem_version
-        end
-        gem_version
-        # When you create a Gem::Version of some kind of pre-release or RC, it
-        # will replace a '-' with '.pre.', e.g. "1.1.0-RC" -> #<Gem::Version "1.1.0.pre.RC">
-      end.compact.sort.reverse[0].to_s.gsub(".pre.","-")
-    when "glide"
-      dependency_versions.map do |version|
-        gem_version = Gem::Version.new(version.gsub("v", ""))
-        if !options[:pre]
-          gem_version = gem_version.prerelease? ? nil : gem_version
-        end
-        gem_version
-      end.compact.sort.reverse[0].to_s.gsub(".pre.","-").prepend("v")
+      when "nginx" then version.gsub("release-","")
+      else version
     end
   end
 
-  def massage_version(version)
+  def prerelease_version?(version)
+    version = massage_version_for_semver(version)
+    Gem::Version.new(version).prerelease?
+  end
+
+
+  def massage_version_for_semver(version)
     case dependency
-    when "node"
-      version.gsub("v","")
-    when "nginx"
-      version.gsub("release-","")
-    else
-      version
+      when "godep" then version.gsub("v","")
+      when "glide" then version.gsub("v","")
+      when "nginx" then version.gsub("release-","")
+      else version
     end
   end
 

@@ -39,13 +39,13 @@ class NewReleasesDetector
       ENV['TRACKER_REQUESTER_ID'].to_i
     )
     dependency_tags.each do |dependency, versions|
-      tracker_story_title = "Build and/or Include new releases: #{dependency} #{versions.join(', ')}"
-      tracker_story_description = "We have #{versions.count} new releases for **#{dependency}**:\n**version #{versions.join(', ')}**\n See the documentation at http://docs.cloudfoundry.org/buildpacks/new_dependency_releases.html for info on building a new release binary and adding it to the buildpack manifest file."
+      tracker_story_name = "Build and/or Include new releases: #{dependency} #{versions.join(', ')}"
+      tracker_story_description = "We have #{versions.count} new releases for **#{dependency}**:\n**version #{versions.join(', ')}**\n See the documentation at http://docs.cloudfoundry.org/buildpacks/upgrading_dependency_versions.html for info on building a new release binary and adding it to the buildpack manifest file."
       tracker_story_tasks = BuildpackDependency.for(dependency).map do |buildpack|
         "Update #{dependency} in #{buildpack}-buildpack"
       end
 
-      tracker_client.post_to_tracker(tracker_story_title, tracker_story_description, tracker_story_tasks, 1)
+      tracker_client.post_to_tracker(name: tracker_story_name, description: tracker_story_description, tasks: tracker_story_tasks, point_value: 1)
     end
   end
 
@@ -64,7 +64,7 @@ class NewReleasesDetector
     dependency_tags = {}
 
     tags.each do |current_dependency, get_tags|
-      current_tags = get_tags.call
+      current_tags = massage_version(get_tags.call, current_dependency)
 
       filename = "#{new_releases_dir}/#{current_dependency}.yaml"
       filename_diff = "#{new_releases_dir}/#{current_dependency}-new.yaml"
@@ -98,11 +98,23 @@ class NewReleasesDetector
       jruby:           -> { Octokit.tags('jruby/jruby').map(&:name).grep(/^(1|9)\./) },
       maven:           -> { Octokit.tags('apache/maven').map(&:name).grep(/^maven/) },
       nginx:           -> { Octokit.tags('nginx/nginx').map(&:name).grep(/^release/) },
-      node:            -> { Octokit.tags('nodejs/node').map(&:name).grep(/^v/) },
+      node:            -> { JSON.parse(open('https://nodejs.org/dist/index.json').read).map{|d| d['version']} },
       openjdk:         -> { YAML.load(open('https://download.run.pivotal.io/openjdk/trusty/x86_64/index.yml').read).keys },
       php:             -> { Octokit.tags('php/php-src').map(&:name).grep(/^php/) },
       python:          -> { JSON.parse(open('https://hg.python.org/cpython/json-tags').read)['tags'].map { |t| t['tag'] } },
       ruby:            -> { Octokit.tags('ruby/ruby').map(&:name).grep(/^v/) }
     }
+  end
+
+  # take the list of tags and format the version so it matches
+  # the version in the buildpack manifest.yml. This way, the version format
+  # is consistent throughout the whole pipeline.
+  def massage_version(tags,dependency)
+    case dependency
+    when :node
+      tags.map {|tag| tag.gsub(/v/,"")}
+    else
+      tags
+    end
   end
 end

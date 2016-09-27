@@ -1,17 +1,21 @@
 ---
-platform: ppc64le
+platform: linux
 image_resource:
   type: docker-image
   source:
-    repository: 140.211.168.31:5000/cloudfoundry/cflinuxfs2
-    insecure_registries: ["140.211.168.31:5000"]
+    repository: cloudfoundry/cflinuxfs2
 inputs:
   - name: binary-builder
   - name: buildpacks-ci
   - name: builds-yaml
-#  - name: built-yaml
+  - name: built-yaml
 outputs:
   - name: binary-builder-artifacts
   - name: builds-yaml-artifacts
 run:
-  path: buildpacks-ci/scripts/build-binary.rb
+  path: bash
+  args:
+    - -cl
+    - buildpacks-ci/scripts/build-binary.rb
+params:
+  RUBYGEM_MIRROR:

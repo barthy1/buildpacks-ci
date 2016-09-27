@@ -100,25 +100,58 @@ describe TrackerClient do
     end
   end
 
+  describe '#find_unaccepted_story_ids' do
+    subject { described_class.new(api_key, project_id, requester_id) }
+    let(:text_to_search_for) { 'text of interest' }
+
+    before do
+      allow(subject).to receive(:search).and_return(stories)
+    end
+
+    context 'with accepted and unaccepted stories that match query text' do
+      let(:stories) {
+        [
+          { 'id' => 111_111_111, 'current_state' => 'accepted' },
+          { 'id' => 999_999_999, 'current_state' => 'not even vaguely accepted, lol' },
+        ]
+      }
+
+      it 'should return only story ids of unaccepted stories' do
+        story_ids = subject.find_unaccepted_story_ids(text_to_search_for)
+        expect(story_ids).to eq [999_999_999]
+      end
+    end
+
+    context 'with no stories that match query text' do
+      let(:stories) { [] }
+
+      it 'should return no story ids' do
+        story_ids = subject.find_unaccepted_story_ids(text_to_search_for)
+        expect(story_ids).to be_empty
+      end
+    end
+  end
+
   describe '#post_to_tracker' do
     describe 'input checking' do
       let(:name)        { 'OH NOOOO' }
       let(:description) { 'OH NOOOOOOOOOOOOOOOOOO' }
       let(:tasks)       { %w(Taskmaster Marvel) }
       let(:point_value) { 1 }
+      let(:labels)        { %w(code-complete) }
 
       context 'the POST request is successful' do
         subject { described_class.new(api_key, project_id, requester_id) }
 
         before do
           stub_request(:post, tracker_uri)
-            .with(body: '{"name":"OH NOOOO","description":"OH NOOOOOOOOOOOOOOOOOO","requested_by_id":1234567,"tasks":[{"description":"Taskmaster"},{"description":"Marvel"}],"estimate":1}',
+            .with(body: '{"name":"OH NOOOO","description":"OH NOOOOOOOOOOOOOOOOOO","requested_by_id":1234567,"tasks":[{"description":"Taskmaster"},{"description":"Marvel"}],"labels":[{"name":"code-complete"}],"estimate":1}',
                   headers: { 'Accept' => '*/*', 'Accept-Encoding' => 'gzip;q=1.0,deflate;q=0.6,identity;q=0.3', 'Content-Type' => 'application/json', 'Host' => 'www.pivotaltracker.com', 'User-Agent' => 'Ruby', 'X-Trackertoken' => 'totes_a_real_api_key' })
             .to_return(status: 200, body: '', headers: {})
         end
 
         it 'receives the 200 status code' do
-          response = subject.post_to_tracker name, description, tasks, point_value
+          response = subject.post_to_tracker(name: name, description: description, tasks: tasks, point_value: point_value, labels: labels)
           expect(WebMock).to have_requested(:post, tracker_uri)
           expect(response.code).to eq '200'
         end
@@ -129,17 +162,18 @@ describe TrackerClient do
             description: description,
             requested_by_id: requester_id,
             tasks: [{ description: 'Taskmaster' }, { description: 'Marvel' }],
+            labels: [{ name: 'code-complete' }],
             estimate: 1
           }.to_json
 
-          response = subject.post_to_tracker name, description, tasks, point_value
+          response = subject.post_to_tracker(name: name, description: description, tasks: tasks, point_value: point_value, labels: labels)
 
           expect(WebMock).to have_requested(:post, tracker_uri)
             .with(body: expected_payload, headers: { 'Content-Type' => 'application/json' })
         end
 
         it 'has the api key that was passed to it in the header' do
-          response = subject.post_to_tracker name, description, tasks, point_value
+          response = subject.post_to_tracker(name: name, description: description, tasks: tasks, point_value: point_value, labels: labels)
 
           expected_headers = {
             'Content-Type' => 'application/json',
@@ -155,7 +189,7 @@ describe TrackerClient do
         subject { described_class.new(api_key, project_id, requester_id) }
 
         it 'raises an exception without posting to Tracker' do
-          expect { subject.post_to_tracker '', 'WHAT HAVE YOU DOONNNNNNNNNNE', tasks, point_value }.to raise_error(RuntimeError)
+          expect { subject.post_to_tracker name: '', description: 'WHAT HAVE YOU DOONNNNNNNNNNE', tasks: tasks, point_value: point_value, labels: labels }.to raise_error(RuntimeError)
           expect(WebMock).not_to have_requested(:post, tracker_uri)
         end
       end
@@ -164,7 +198,7 @@ describe TrackerClient do
         subject { described_class.new(api_key, project_id, requester_id) }
 
         it 'raises an exception without posting to Tracker' do
-          expect { subject.post_to_tracker nil, 'WHAT HAVE YOU DOONNNNNNNNNNE', tasks, point_value }.to raise_error(RuntimeError)
+          expect { subject.post_to_tracker name: nil, description: 'WHAT HAVE YOU DOONNNNNNNNNNE', tasks: tasks, point_value: point_value, labels: labels }.to raise_error(RuntimeError)
           expect(WebMock).not_to have_requested(:post, tracker_uri)
         end
       end
@@ -173,7 +207,7 @@ describe TrackerClient do
         subject { described_class.new(api_key, project_id, requester_id) }
 
         it 'raises an exception without posting to Tracker' do
-          expect { subject.post_to_tracker 'a', '', tasks, point_value }.to raise_error(RuntimeError)
+          expect { subject.post_to_tracker name: 'a', description: '', tasks: tasks, point_value: point_value, labels: labels }.to raise_error(RuntimeError)
           expect(WebMock).not_to have_requested(:post, tracker_uri)
         end
       end
@@ -182,7 +216,7 @@ describe TrackerClient do
         subject { described_class.new(api_key, project_id, requester_id) }
 
         it 'raises an exception without posting to Tracker' do
-          expect { subject.post_to_tracker 'a', nil, tasks, point_value }.to raise_error(RuntimeError)
+          expect { subject.post_to_tracker name: 'a', description: nil, tasks: tasks, point_value: point_value, labels: labels }.to raise_error(RuntimeError)
           expect(WebMock).not_to have_requested(:post, tracker_uri)
         end
       end
@@ -203,7 +237,7 @@ describe TrackerClient do
       context 'API call is not successful' do
         subject { described_class.new(api_key, project_id, requester_id) }
         it 'raises an HTTP error' do
-          expect { subject.post_to_tracker 'YOU FOOL', 'WHAT HAVE YOU DOONNNNNNNNNNE', [] }
+          expect { subject.post_to_tracker name: 'YOU FOOL', description: 'WHAT HAVE YOU DOONNNNNNNNNNE', point_value: []}
             .to raise_error(RuntimeError)
         end
       end

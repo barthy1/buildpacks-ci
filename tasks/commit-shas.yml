@@ -1,6 +1,9 @@
 ---
 platform: linux
-image: docker:///cfbuildpacks/ci
+image_resource:
+  type: docker-image
+  source:
+    repository: cfbuildpacks/ci
 inputs:
   - name: buildpacks-ci
   - name: buildpack-checksums
@@ -8,4 +11,13 @@ inputs:
 outputs:
   - name: sha-artifacts
 run:
-  path: buildpacks-ci/scripts/release/commit-shas
+  path: buildpacks-ci/scripts/release/commit-shas.rb
+run:
+  path: bash
+  args:
+    - -c
+    - |
+      pushd buildpacks-ci
+      bundle
+      popd
+      buildpacks-ci/scripts/release/commit-shas.rb

@@ -1,9 +1,14 @@
 ---
 platform: linux
-image: docker:///cfbuildpacks/ci
+image_resource:
+  type: docker-image
+  source:
+    repository: cfbuildpacks/ci
 inputs:
   - name: buildpacks-ci
   - name: brats
   - name: cf-environments
 run:
   path: buildpacks-ci/scripts/brats
+params:
+  RUBYGEM_MIRROR:

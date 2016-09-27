@@ -1,4 +1,10 @@
 ---
+resource_types:
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
+
 resources:
   - name: buildpacks-pivnet-uploader
     type: git
@@ -9,6 +15,7 @@ resources:
     type: git
     source:
       uri: {{buildpacks-ci-git-uri-public}}
+      branch: {{buildpacks-ci-git-uri-public-branch}}
   - name: cf-edge-environments
     type: pool
     source:
@@ -30,19 +37,42 @@ resources:
   - name: buildpack-packager
     type: github-release
     source:
-      user: cloudfoundry
+      user: {{buildpacks-github-org}}
       repository: buildpack-packager
       access_token: {{buildpacks-github-token}}
   - name: machete
     type: github-release
     source:
-      user: cloudfoundry
+      user: {{buildpacks-github-org}}
       repository: machete
       access_token: {{buildpacks-github-token}}
+<% if language == 'multi' %>
   - name: buildpack-develop
     type: git
     source:
-      uri: git@github.com:cloudfoundry/<%= language %>-buildpack.git
+      uri: git@github.com:cloudfoundry-incubator/multi-buildpack.git
+      private_key: {{multi-buildpack-private-key}}
+      branch: develop
+      ignore_paths:
+        - VERSION
+        - CHANGELOG
+  - name: buildpack-master
+    type: git
+    source:
+      uri: git@github.com:cloudfoundry-incubator/multi-buildpack.git
+      private_key: {{multi-buildpack-private-key}}
+      branch: master
+  - name: buildpack-github-release
+    type: github-release
+    source:
+      user: cloudfoundry-incubator
+      repository: <%= language %>-buildpack
+      access_token: {{buildpacks-github-token}}
+<% else %>
+  - name: buildpack-develop
+    type: git
+    source:
+      uri: git@github.com:<%= organization %>/<%= language %>-buildpack.git
       private_key: {{<%= language %>-buildpack-private-key}}
       branch: develop
       ignore_paths:
@@ -51,29 +81,30 @@ resources:
   - name: buildpack-master
     type: git
     source:
-      uri: git@github.com:cloudfoundry/<%= language %>-buildpack.git
+      uri: git@github.com:<%= organization %>/<%= language %>-buildpack.git
       private_key: {{<%= language %>-buildpack-private-key}}
       branch: master
+  - name: buildpack-github-release
+    type: github-release
+    source:
+      user: {{buildpacks-github-org}}
+      repository: <%= language %>-buildpack
+      access_token: {{buildpacks-github-token}}
+<% end %>
   - name: pivotal-buildpack
     type: s3
     source:
-      bucket: {{pivotal-buildpacks-s3-bucket-name}}
+      bucket: {{buildpacks-binaries-s3-bucket}}
       regexp: <%= language %>_buildpack-v(.*).zip
       access_key_id: {{pivotal-buildpacks-s3-access-key}}
       secret_access_key: {{pivotal-buildpacks-s3-secret-key}}
   - name: pivotal-buildpack-cached
     type: s3
     source:
-      bucket: {{pivotal-buildpacks-s3-bucket-name}}
+      bucket: {{buildpacks-binaries-s3-bucket}}
       regexp: <%= language %>_buildpack-cached-v(.*).zip
       access_key_id: {{pivotal-buildpacks-s3-access-key}}
       secret_access_key: {{pivotal-buildpacks-s3-secret-key}}
-  - name: buildpack-github-release
-    type: github-release
-    source:
-      user: cloudfoundry
-      repository: <%= language %>-buildpack
-      access_token: {{buildpacks-github-token}}
   - name: buildpack-checksums
     type: git
     source:
@@ -92,25 +123,15 @@ jobs:
   <% if language == "php" %>
   - name: ensure-manifest-has-modules
     serial: true
+    public: true
     plan:
       - get: buildpacks-ci
       - get: buildpack
         resource: buildpack-develop
         trigger: true
       - task: load-modules
-        config:
-          platform: linux
-          image: docker:///cfbuildpacks/ci
-          inputs:
-            - name: buildpacks-ci
-            - name: buildpack
-          outputs:
-            - name: updated-buildpack
-          run :
-            path: bash
-            args:
-              - -c
-              - "cd buildpack && ./bin/populate-modules-in-manifest && (git commit -am 'Updated manifest with supported PHP modules [ci skip]' || true) && cd - && rsync -a buildpack/ updated-buildpack"
+        file: buildpacks-ci/tasks/populate-modules-in-manifest.yml
+        privileged: true
       - put: buildpack-develop
         params:
           repository: updated-buildpack
@@ -118,6 +139,7 @@ jobs:
   <% end %>
   - name: detect-new-version-and-upload-artifacts
     serial: true
+    public: true
     plan:
       - aggregate:
         - get: buildpacks-ci
@@ -128,6 +150,8 @@ jobs:
         - task: detect-and-upload
           file: buildpacks-ci/tasks/detect-and-upload.yml
           privileged: true
+          params:
+            RUBYGEM_MIRROR: {{rubygem-mirror}}
         - put: pivotal-buildpack
           params:
             from: buildpack-artifacts/.*_buildpack-v(.*).zip
@@ -139,12 +163,13 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "<%= language %>-buildpack detect-new-version-and-upload-artifacts job on Concourse failed! \n Check: https://buildpacks.ci.cf-app.com/pipelines/<%= language %>-buildpack/jobs/detect-new-version-and-upload-artifacts"
+            text: "<%= language %>-buildpack detect-new-version-and-upload-artifacts job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
   - name: specs-edge-master
     serial: true
+    public: true
     plan:
       - put: cf-environments
         resource: cf-edge-environments
@@ -171,7 +196,8 @@ jobs:
             STACKS: cflinuxfs2
             COMPOSER_GITHUB_OAUTH_TOKEN: {{composer-github-oauth-token}}
             CF_PASSWORD: {{ci-cf-password}}
-            CF_EDGE: 'true'
+            DOMAIN_NAME: {{domain-name}}
+            RUBYGEM_MIRROR: {{rubygem-mirror}}
           privileged: true
           ensure:
             put: cf-edge-environments
@@ -180,12 +206,13 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "<%= language %>-buildpack specs-edge-master job on Concourse failed! \n Check: https://buildpacks.ci.cf-app.com/pipelines/<%= language %>-buildpack/jobs/specs-edge-master"
+            text: "<%= language %>-buildpack specs-edge-master job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
   - name: specs-lts-master
     serial: true
+    public: true
     plan:
       - put: cf-environments
         resource: cf-lts-environments
@@ -212,6 +239,8 @@ jobs:
             STACKS: cflinuxfs2
             COMPOSER_GITHUB_OAUTH_TOKEN: {{composer-github-oauth-token}}
             CF_PASSWORD: {{ci-cf-password}}
+            DOMAIN_NAME: {{domain-name}}
+            RUBYGEM_MIRROR: {{rubygem-mirror}}
           privileged: true
           ensure:
             put: cf-lts-environments
@@ -220,12 +249,13 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "<%= language %>-buildpack specs-lts-master job on Concourse failed! \n Check: https://buildpacks.ci.cf-app.com/pipelines/<%= language %>-buildpack/jobs/specs-lts-master"
+            text: "<%= language %>-buildpack specs-lts-master job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
   - name: buildpack-release
     serial: true
+    public: true
     plan:
       - aggregate:
         - get: buildpacks-ci
@@ -246,6 +276,7 @@ jobs:
           tag_prefix: v
   - name: buildpack-to-github
     serial: true
+    public: true
     plan:
       - aggregate:
         - get: buildpacks-ci
@@ -274,8 +305,10 @@ jobs:
           globs:
             - buildpack-artifacts/*_buildpack-cached-v*.zip
             - buildpack-artifacts/*_buildpack-cached-v*.zip.SHA256SUM.txt
+<% unless language == "multi" %>
   - name: buildpack-to-pivnet
     serial: true
+    public: true
     plan:
       - aggregate:
         - get: buildpacks-ci
@@ -300,8 +333,10 @@ jobs:
           PIVNET_PRODUCT_NAME: {{pivnet-product-name}}
           GITHUB_URL: https://github.com/cloudfoundry/<%= language %>-buildpack
         privileged: true
+<% end %>
   - name: specs-edge-develop
     serial: true
+    public: true
     plan:
       - put: cf-environments
         resource: cf-edge-environments
@@ -320,7 +355,8 @@ jobs:
             STACKS: cflinuxfs2
             COMPOSER_GITHUB_OAUTH_TOKEN: {{composer-github-oauth-token}}
             CF_PASSWORD: {{ci-cf-password}}
-            CF_EDGE: 'true'
+            DOMAIN_NAME: {{domain-name}}
+            RUBYGEM_MIRROR: {{rubygem-mirror}}
           privileged: true
 <% unless language == "binary" %>
         - task: brats
@@ -330,11 +366,13 @@ jobs:
             CI_CF_USERNAME: {{ci-cf-username}}
             CI_CF_PASSWORD: {{ci-cf-password}}
             LANGUAGE: <%= language %>
+            RUBYGEM_MIRROR: {{rubygem-mirror}}
+            DOMAIN_NAME: {{domain-name}}
 <% end %>
         on_failure:
           put: failure-alert
           params:
-            text: "<%= language %>-buildpack specs-edge-develop job on Concourse failed! \n Check: https://buildpacks.ci.cf-app.com/pipelines/<%= language %>-buildpack/jobs/specs-edge-develop"
+            text: "<%= language %>-buildpack specs-edge-develop job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
@@ -344,6 +382,7 @@ jobs:
             release: cf-environments
   - name: specs-lts-develop
     serial: true
+    public: true
     plan:
       - put: cf-environments
         resource: cf-lts-environments
@@ -362,6 +401,8 @@ jobs:
             STACKS: cflinuxfs2
             COMPOSER_GITHUB_OAUTH_TOKEN: {{composer-github-oauth-token}}
             CF_PASSWORD: {{ci-cf-password}}
+            DOMAIN_NAME: {{domain-name}}
+            RUBYGEM_MIRROR: {{rubygem-mirror}}
           privileged: true
         - task: brats
           file: buildpacks-ci/tasks/run-brats.yml
@@ -370,10 +411,12 @@ jobs:
             CI_CF_USERNAME: {{ci-cf-username}}
             CI_CF_PASSWORD: {{ci-cf-password}}
             LANGUAGE: <%= language %>
+            RUBYGEM_MIRROR: {{rubygem-mirror}}
+            DOMAIN_NAME: {{domain-name}}
         on_failure:
           put: failure-alert
           params:
-            text: "<%= language %>-buildpack specs-lts-develop job on Concourse failed! \n Check: https://buildpacks.ci.cf-app.com/pipelines/<%= language %>-buildpack/jobs/specs-lts-develop"
+            text: "<%= language %>-buildpack specs-lts-develop job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
@@ -381,9 +424,10 @@ jobs:
           put: cf-lts-environments
           params:
             release: cf-environments
-<% unless language == "binary" %>
+<% unless language == "binary" || language == "multi" %>
   - name: update-compile-extensions
     serial: true
+    public: true
     plan:
       - aggregate:
         - get: buildpacks-ci
@@ -402,6 +446,7 @@ jobs:
 <% end %>
   - name: update-buildpack-packager
     serial: true
+    public: true
     plan:
       - aggregate:
         - get: buildpacks-ci
@@ -412,12 +457,15 @@ jobs:
       - task: update-buildpack-packager
         file: buildpacks-ci/tasks/update-buildpack-packager.yml
         privileged: true
+        params:
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
       - put: buildpack-develop
         params:
           repository: buildpack-artifacts
           rebase: true
   - name: update-machete
     serial: true
+    public: true
     plan:
       - aggregate:
         - get: buildpacks-ci
@@ -428,6 +476,9 @@ jobs:
       - task: update-machete
         file: buildpacks-ci/tasks/update-machete.yml
         privileged: true
+        params:
+          MACHETE_REPOSITORY: {{machete-git-uri-public}}
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
       - put: buildpack-develop
         params:
           repository: buildpack-artifacts

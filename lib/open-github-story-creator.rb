@@ -7,22 +7,26 @@ require 'octokit'
 
 class OpenGithubStoryCreator
   def self.create_pull_requests_story
-    story_title = 'Review Open Pull Requests'
+    story_name = 'Review Open Pull Requests'
     story_description = 'Provide feedback for open pull requests in repos that the buildpacks team owns.'
     story_tasks = get_open_pull_requests_as_formatted_tasks
+    labels = %w(maintenance)
+    point_value = 1
 
     puts 'Creating Tracker story for reviewing open PRs'
-    create_tracker_story(story_title, story_description, story_tasks)
+    create_tracker_story(story_name, story_description, story_tasks, point_value, labels)
     puts 'Successfully created tracker story reviewing open PRs'
   end
 
   def self.create_issues_story
-    story_title = 'Review Open Issues'
+    story_name = 'Review Open Issues'
     story_description = 'Provide feedback for open issues in repos that the buildpacks team owns.'
     story_tasks = get_open_issues_as_formatted_tasks
+    labels = %w(maintenance)
+    point_value = 1
 
     puts 'Creating Tracker story for reviewing open issues'
-    create_tracker_story(story_title, story_description, story_tasks)
+    create_tracker_story(story_name, story_description, story_tasks, point_value, labels)
     puts 'Successfully created tracker story reviewing open issues'
   end
 
@@ -44,8 +48,18 @@ class OpenGithubStoryCreator
                        'buildpack-releases',
                        'cflinuxfs2-rootfs-release',
                        'brats',
-                       'stacks'],
-    'pivotal-cf-experimental' => ['stacks-release']
+                       'stacks',
+                       'go-buildpack-release',
+                       'ruby-buildpack-release',
+                       'python-buildpack-release',
+                       'php-buildpack-release',
+                       'nodejs-buildpack-release',
+                       'staticfile-buildpack-release',
+                       'binary-buildpack-release',
+                       'java-offline-buildpack-release',
+                       'java-buildpack-release'],
+    'cloudfoundry-incubator' => ['multi-buildpack'],
+    'pivotal-cf-experimental' => ['stacks-release', 'concourse-filter', 'new_version_resource']
   }
 
   def self.configure_octokit
@@ -94,12 +108,12 @@ class OpenGithubStoryCreator
     story_tasks
   end
 
-  def self.create_tracker_story(story_title, story_description, story_tasks)
+  def self.create_tracker_story(story_name, story_description, story_tasks, point_value, labels)
     tracker_client = TrackerClient.new(
       ENV['TRACKER_API_TOKEN'],
       ENV['TRACKER_PROJECT_ID'],
       ENV['TRACKER_REQUESTER_ID'].to_i
     )
-    tracker_client.post_to_tracker story_title, story_description, story_tasks
+    tracker_client.post_to_tracker(name: story_name, description: story_description, tasks: story_tasks, point_value: point_value, labels: labels)
   end
 end

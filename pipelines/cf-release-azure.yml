@@ -5,6 +5,7 @@ resources:
     type: git
     source:
       uri: {{buildpacks-ci-git-uri-public}}
+      branch: {{buildpacks-ci-git-uri-public-branch}}
   - name: bosh-lite
     type: git
     source:
@@ -149,24 +150,24 @@ groups:
     jobs:
       - recreate-bosh-lite
       - deploy-cf-and-diego-to-cf-release
-      - dats
+      - cats
 jobs:
   - name: recreate-bosh-lite
     serial: true
     serial_groups: [ stacks ]
+    public: true
     plan:
       - aggregate:
         - get: deployments-buildpacks
         - get: buildpacks-ci
       - task: recreate-cf-release-bosh-lite
-        file: buildpacks-ci/tasks/recreate-bosh-lite.yml
+        file: buildpacks-ci/tasks/recreate-bosh-lite/task.yml
         params:
           IAAS: azure
-          AZURE_BOSH_USER: {{azure-bosh-user}}
-          AZURE_BOSH_PASSWORD: {{azure-bosh-password}}
+          AZURE_BOSH_DIRECTOR_USER: {{azure-bosh-director-user}}
+          AZURE_BOSH_DIRECTOR_PASSWORD: {{azure-bosh-director-password}}
           AZURE_BOSH_LITE_NAME: cf-release-azure-bosh-lite
           DEPLOYMENT_NAME: cf-release.buildpacks-azure.ci
-          PASSWORD: {{bosh-lite-password}}
           BOSH_PRIVATE_KEY: {{bosh_private_key}}
           BOSH_USER: {{bosh_user}}
           BOSH_PASSWORD: {{bosh_password}}
@@ -190,6 +191,7 @@ jobs:
   - name: deploy-cf-and-diego-to-cf-release
     serial: true
     serial_groups: [ cf-release ]
+    public: true
     plan:
       - do:
         - aggregate:
@@ -264,13 +266,14 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "cf-release deploy-cf-and-diego-to-cf-release job on Concourse failed! \n Check: https://buildpacks.ci.cf-app.com/pipelines/cf-release/jobs/deploy-cf-and-diego-to-cf-release"
+            text: "cf-release deploy-cf-and-diego-to-cf-release job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
-  - name: dats
+  - name: cats
     serial: true
     serial_groups: [ cf-release ]
+    public: true
     plan:
       - aggregate:
         - get: buildpacks-ci
@@ -298,7 +301,7 @@ jobs:
         - get: binary-buildpack-github-release
           passed: [ deploy-cf-and-diego-to-cf-release ]
       - do:
-        - task: dats
+        - task: cats
           file: buildpacks-ci/tasks/run-cats.yml
           params:
             DEPLOYMENT_NAME: cf-release.buildpacks-azure.ci
@@ -322,7 +325,7 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "cf-release dats job on Concourse failed! \n Check: https://buildpacks.ci.cf-app.com/pipelines/cf-release/jobs/dats"
+            text: "cf-release cats job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png

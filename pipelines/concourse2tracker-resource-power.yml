@@ -40,6 +40,7 @@ jobs:
       - put: concourse2tracker-image
         params:
           build: buildpacks-ci/lib/concourse2tracker-resource
+          dockerfile: buildpacks-ci/lib/concourse2tracker-resource/Dockerfile.ppc64le
           push: true
 resource_types:
 - name: docker-image

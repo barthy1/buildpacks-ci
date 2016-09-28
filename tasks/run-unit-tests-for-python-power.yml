@@ -1,0 +1,9 @@
+---
+platform: linux
+
+inputs:
+  - name: build-tar
+run:
+  path: bash
+  args: ["-c", "tar xzf build-tar/binary-builder-source.tgz -C /tmp &&
+    cd /tmp/powerpc64le-linux-gnu/ports/python/*/*/ && make test"]

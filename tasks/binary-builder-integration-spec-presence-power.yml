@@ -1,0 +1,9 @@
+platform: linux
+
+inputs:
+  - name: binary-builder
+  - name: buildpacks-ci
+params:
+  SPEC_NAMES:
+run:
+  path: buildpacks-ci/scripts/binary-builder-integration-spec-presence.rb

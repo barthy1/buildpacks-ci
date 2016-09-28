@@ -1,0 +1,297 @@
+resource_types:
+- name: s3
+  type: docker-image
+  source:
+    repository: 140.211.168.97:5000/s3-resource
+    insecure_registries: ["140.211.168.97:5000"]
+    username: {{username}}
+    password: {{password}}
+resources:
+  - name: binary-builder
+    type: git
+    source:
+      uri: {{binary-builder-git-uri}}
+      branch: power-support
+  - name: cflinuxfs2
+    type: docker-image
+    source:
+      repository: 140.211.168.97:5000/cflinuxfs2
+      tag: "latest"
+      insecure_registries: ["140.211.168.97:5000"]
+      username: {{username}}
+      password: {{password}}
+  - name: buildpacks-ci-image
+    type: docker-image
+    source:
+      repository: 140.211.168.97:5000/buildpacks/ci
+      tag: "latest"
+      insecure_registries: ["140.211.168.97:5000"]
+      username: {{username}}
+      password: {{password}}
+  - name: buildpacks-ci
+    type: git
+    source:
+      uri: {{buildpacks-ci-git-uri-public}}
+      branch: {{buildpacks-ci-git-uri-public-branch}}
+  - name: build-tar
+    type: s3
+    source:
+      bucket: {{buildpacks-binaries-s3-bucket}}
+      versioned_file: /concourse-artifacts/binary-builder-source.tgz
+      access_key_id: {{pivotal-buildpacks-s3-access-key}}
+      secret_access_key: {{pivotal-buildpacks-s3-secret-key}}
+<% %w(composer php php7 python node).each do |dep| %>
+  - name: <%= dep %>-builds
+    type: git
+    source:
+      branch: binary-builds
+      private_key: {{buildpacks-ci-private-key}}
+      uri: {{buildpacks-ci-git-uri}}
+      paths: [ <%= dep %>-builds.yml ]
+  - name: <%= dep %>-built-output
+    type: git
+    source:
+      branch: binary-built-output
+      private_key: {{buildpacks-ci-private-key}}
+      uri: {{buildpacks-ci-git-uri}}
+      paths: [ <%= dep %>-built.yml ]
+<% end %>
+
+<% %w(composer node).each do |auto_dep| %>
+  - name: <%= auto_dep %>-builds-in
+    type: git
+    source:
+      branch: binary-builds
+      private_key: {{buildpacks-ci-private-key}}
+      uri: {{buildpacks-ci-git-uri}}
+      paths: [ <%= auto_dep %>-builds.yml ]
+<% end %>
+
+<% %w(composer node).each do |auto_new| %>
+  - name: <%= auto_new %>-new-releases
+    type: git
+    source:
+      uri: {{buildpacks-ci-git-uri}}
+      branch: new-release-notifications
+      private_key: {{buildpacks-ci-private-key}}
+      paths: [ <%= auto_new %>-new.yaml ]
+<% end %>
+
+groups:
+#  - name: enqueue-automated-builds
+#    jobs:
+#<% %w(composer glide godep nginx node).each do |auto_dep| %>
+#    - trigger-<%= auto_dep %>-build
+#<% end %>
+#  - name: automated-builds
+#    jobs:
+#<% %w(composer glide godep nginx node).each do |auto_dep| %>
+#    - build-<%= auto_dep %>
+#<% end %>
+#<% {go: ["godep", "glide"], staticfile: ["nginx"], php: ["nginx", "composer"], nodejs: ["node"], ruby: ["node"]}.each do |buildpack, dependencies| %>
+#  <% dependencies.each do |dependency| %>
+#    - update-<%= dependency %>-in-<%= buildpack %>-buildpack
+#  <% end %>
+#<% end %>
+#    - test-node
+#    - test-nginx
+  - name: manual-builds
+    jobs:
+<% %w(php php7 python node).each do |dependency| %>
+    - build-<%= dependency %>
+<% end %>
+    - test-php
+    - test-php7
+    - test-python
+    - test-node
+  - name: binary-builder
+    jobs:
+      - binary-builder
+
+jobs:
+  - name: binary-builder
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: buildpacks-ci-image
+        - get: cflinuxfs2
+        - get: buildpacks-ci
+        - get: binary-builder
+          trigger: true
+      - do:
+        <% integration_spec_names = %w(nodejs php5 php7 python) %>
+#        - task: all-expected-integration-specs-will-run
+#          image: buildpacks-ci-image
+#          privileged: true
+#          file: buildpacks-ci/tasks/binary-builder-integration-spec-presence-power.yml
+#          params:
+#            SPEC_NAMES: <%= integration_spec_names.join(',') %>
+        - task: all-unit-tests
+          image: cflinuxfs2
+          privileged: true
+          file: buildpacks-ci/tasks/binary-builder-unit-power.yml
+          params:
+            RUBYGEM_MIRROR: {{rubygem-mirror}}
+        - aggregate:
+          <% integration_spec_names.each do |spec_name| %>
+          - task: integration-<%= spec_name %>
+            file: buildpacks-ci/tasks/binary-builder-integration-power.yml
+            image: cflinuxfs2
+            params:
+              SPEC_TO_RUN: <%= spec_name %>
+              RUBYGEM_MIRROR: {{rubygem-mirror}}
+              BINARY_BUILDER_PLATFORM: {{binary-builder-platform}}
+            privileged: true
+          <% end %>
+<% %w(php php7 python node).each do |dependency| %>
+  - name: build-<%= dependency %>
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: builds-yaml
+          resource: <%= dependency %>-builds
+          trigger: true
+        - get: binary-builder
+         # passed: [binary-builder]
+        - get: buildpacks-ci
+        - get: cflinuxfs2
+        - get: built-yaml
+          resource: <%= dependency %>-built-output
+      - do:
+        - task: build-binary
+          image: cflinuxfs2
+          file: buildpacks-ci/tasks/build-binary-power.yml
+          params:
+            BINARY_NAME: <%= dependency %>
+            GIT_SSH_KEY: {{buildpacks-ci-private-key}}
+            RUBYGEM_MIRROR: {{rubygem-mirror}}
+            BINARY_BUILDER_PLATFORM: {{binary-builder-platform}}
+            BINARY_BUILDER_OS_NAME: {{binary-builder-os-name}}
+          privileged: true
+        - put: build-tar
+          params:
+            file: binary-builder-artifacts/original-source-code/*
+        - task: push-binary
+          image: cflinuxfs2
+          file: buildpacks-ci/tasks/push-binary.yml
+          params:
+            BINARY_NAME: <%= dependency %>
+            BUCKET_NAME: {{buildpacks-binaries-s3-bucket}}
+            AWS_ACCESS_KEY_ID: {{pivotal-buildpacks-s3-access-key}}
+            AWS_SECRET_ACCESS_KEY: {{pivotal-buildpacks-s3-secret-key}}
+            AWS_DEFAULT_REGION: us-east-1
+          privileged: true
+<% end %>
+  - name: test-php
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: build-tar
+          passed: [ build-php ]
+          trigger: true
+        - get: buildpacks-ci
+        - get: cflinuxfs2
+      - task: run tests
+        image: cflinuxfs2
+        file: buildpacks-ci/tasks/run-unit-tests-for-php-power.yml
+        privileged: true
+  - name: test-python
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: build-tar
+          passed: [ build-python ]
+          trigger: true
+        - get: buildpacks-ci
+        - get: cflinuxfs2
+      - task: run tests
+        file: buildpacks-ci/tasks/run-unit-tests-for-python-power.yml
+        privileged: true
+        image: cflinuxfs2
+  - name: test-node
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: build-tar
+          passed: [ build-node ]
+          trigger: true
+        - get: buildpacks-ci
+        - get: cflinuxfs2
+      - task: run tests
+        file: buildpacks-ci/tasks/run-unit-tests-for-node-power.yml
+        privileged: true
+        image: cflinuxfs2
+  - name: test-php7
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: build-tar
+          passed: [ build-php7 ]
+          trigger: true
+        - get: cflinuxfs2
+        - get: buildpacks-ci
+      - task: run tests
+        file: buildpacks-ci/tasks/run-unit-tests-for-php7-power.yml
+        privileged: true
+        image: cflinuxfs2
+#<% %w(composer node).each do |dependency| %>
+#  - name: trigger-<%= dependency %>-build
+#    serial: true
+#    public: true
+#    plan:
+#      - aggregate:
+#        - get: buildpacks-ci
+#        - get: new-releases
+#          resource: <%= dependency %>-new-releases
+#          trigger: true
+#        - get: binary-builds
+#          resource: <%= dependency %>-builds
+#      - task: queue-binary-build
+#        privileged: true
+#        file: buildpacks-ci/tasks/queue-dependency-build.yml
+#        params:
+#          DEPENDENCY: <%= dependency %>
+#          RUBYGEM_MIRROR: {{rubygem-mirror}}
+#  - name: build-<%= dependency %>
+#    serial: true
+#    public: true
+#    plan:
+#      - aggregate:
+#        - get: built-yaml
+#          resource: <%= dependency %>-built-output
+#        - get: builds-yaml
+#          resource: <%= dependency %>-builds-in
+#          version: every
+#          trigger: true
+#        - get: binary-builder
+#          passed: [binary-builder]
+#        - get: buildpacks-ci
+#      - do:
+#        - task: build-binary
+#          file: buildpacks-ci/tasks/build-binary-power.yml
+#          params:
+#            GIT_SSH_KEY: {{buildpacks-ci-private-key}}
+#            BINARY_NAME: <%= dependency %>
+#            RUBYGEM_MIRROR: {{rubygem-mirror}}
+#            BINARY_BUILDER_PLATFORM: {{binary-builder-platform}}
+#            BINARY_BUILDER_OS_NAME: {{binary-builder-os-name}}
+#          privileged: true
+#        - put: build-tar
+#          params:
+#            file: binary-builder-artifacts/original-source-code/*
+#        - task: push-binary
+#          file: buildpacks-ci/tasks/push-binary.yml
+#          params:
+#            BINARY_NAME: <%= dependency %>
+#            BUCKET_NAME: {{buildpacks-binaries-s3-bucket}}
+#            AWS_ACCESS_KEY_ID: {{pivotal-buildpacks-s3-access-key}}
+#            AWS_SECRET_ACCESS_KEY: {{pivotal-buildpacks-s3-secret-key}}
+#            AWS_DEFAULT_REGION: us-east-1
+#          privileged: true
+#<% end %>

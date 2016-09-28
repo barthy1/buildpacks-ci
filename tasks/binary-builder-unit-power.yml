@@ -1,0 +1,9 @@
+platform: linux
+
+inputs:
+  - name: binary-builder
+  - name: buildpacks-ci
+params:
+  RUBYGEM_MIRROR:
+run:
+  path: buildpacks-ci/scripts/binary-builder-unit.sh

@@ -1,0 +1,13 @@
+---
+platform: linux
+
+inputs:
+  - name: build-tar
+run:
+  path: bash
+  args: ["-c",
+    "wget http://hg.nginx.org/nginx-tests/archive/tip.tar.gz &&
+    tar -xzf tip.tar.gz -C /tmp/ &&
+    tar xzf build-tar/binary-builder-source.tgz -C /tmp/ &&
+    cd /tmp/nginx-tests* &&
+    TEST_NGINX_BINARY=`ls /tmp/powerpc64le-linux-gnu/ports/nginx/*/nginx-*/objs/nginx` prove ."]

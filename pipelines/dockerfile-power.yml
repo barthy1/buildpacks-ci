@@ -8,8 +8,10 @@ resources:
   - name: buildpacks-ci-image
     type: docker-image
     source:
-      repository: 140.211.168.31:5000/buildpacks/ci
-      insecure_registries: ["140.211.168.31:5000"]
+      repository: 140.211.168.97:5000/buildpacks/ci
+      insecure_registries: ["140.211.168.97:5000"]
+      username: {{username}}
+      password: {{password}}
 jobs:
   - name: ci-build
     serial: true
@@ -21,9 +23,3 @@ jobs:
           build: buildpacks-ci
           dockerfile: buildpacks-ci/Dockerfile.ppc64le
           push: true
-resource_types:
-- name: docker-image
-  type: docker-image
-  source:
-    repository: 140.211.168.31:5000/docker-image-resource-new
-    insecure_registries: ["140.211.168.31:5000"]

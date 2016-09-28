@@ -1,0 +1,11 @@
+---
+platform: linux
+
+inputs:
+  - name: binary-builder-artifacts
+  - name: buildpacks-ci
+run:
+  path: bash
+  args:
+    - -cl
+    - buildpacks-ci/scripts/push-binary.rb

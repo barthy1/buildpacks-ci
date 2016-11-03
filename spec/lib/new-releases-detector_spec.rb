@@ -177,7 +177,7 @@ describe NewReleasesDetector do
 
       context 'when there are new releases' do
         let(:new_versions)          { %w(1.10.5) }
-        let(:github_response) { [double(name: 'release-1.10.1'), double(name: 'release-1.10.2'), double(name: 'release-1.10.5')] }
+        let(:github_response) { [double(name: ' release-1.10.1'), double(name: 'release-1.10.2'), double(name: 'release-1.10.5')] }
 
         it_behaves_like 'there are new versions to potentially build', :github
       end

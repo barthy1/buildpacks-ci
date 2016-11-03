@@ -4,3 +4,4 @@ private.yml
 spec/scripts/stacks/fixtures/receipt-artifacts/
 spec/scripts/stacks/fixtures/stacks-artifacts/
 rspec.failures
+public-config.yml

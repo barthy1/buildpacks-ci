@@ -17,7 +17,7 @@ jobs:
     serial: true
     plan:
       - get: buildpacks-ci
-        trigger: true
+        trigger: false
       - put: buildpacks-ci-image
         params:
           build: buildpacks-ci

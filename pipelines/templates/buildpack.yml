@@ -1,14 +1,30 @@
 ---
-resource_types:
-  - name: slack-notification
-    type: docker-image
-    source:
-      repository: cfcommunity/slack-notification-resource
-  - name: pivnet
-    type: docker-image
-    source:
-      repository: pivotalcf/pivnet-resource
-      tag: latest-final
+#resource_types:
+#  - name: slack-notification
+#    type: docker-image
+#    source:
+#      repository: cfcommunity/slack-notification-resource
+#  - name: pivnet
+#    type: docker-image
+#    source:
+#      repository: pivotalcf/pivnet-resource
+#      tag: latest-final
+
+#resource_types:
+#- name: pool
+#  type: docker-image
+#  source:
+#    repository: 140.211.168.97:5000/pool-resource
+#    insecure_registries: ["140.211.168.97:5000"]
+#    username: {{username}}
+#    password: {{password}}
+#- name: s3
+#  type: docker-image
+#  source:
+#    repository: 140.211.168.97:5000/s3-resource
+#    insecure_registries: ["140.211.168.97:5000"]
+#    username: {{username}}
+#    password: {{password}}
 
 resources: ############################################################################################################
 
@@ -28,6 +44,15 @@ resources: #####################################################################
       ignore_paths:
         - VERSION
         - CHANGELOG
+  - name: buildpacks-ci-image
+    type: docker-image
+    source:
+      repository: 140.211.168.97:5000/buildpacks/ci
+      tag: "latest"
+      insecure_registries: ["140.211.168.97:5000"]
+      username: {{username}}
+      password: {{password}}
+
 
   - name: buildpack-master
     type: git
@@ -47,15 +72,15 @@ resources: #####################################################################
     source:
       uri: https://github.com/cloudfoundry/brats.git
 
-<% unless language == 'multi' %>
-  - name: pivnet-buildpack-metadata
-    type: git
-    source:
-      branch: master
-      private_key: {{pivotal-cf-buildpacks-ci-robots}}
-      uri: git@github.com:pivotal-cf/buildpacks-ci-robots.git # pivotal-cf because pivnet is not foundation's
-      paths: [ pivnet-metadata/<%= language %>.yml ]
-<% end %>
+#<% unless language == 'multi' %>
+#  - name: pivnet-buildpack-metadata
+#    type: git
+#    source:
+#      branch: master
+#      private_key: !!!pivotal-cf-buildpacks-ci-robots
+#      uri: git@github.com:pivotal-cf/buildpacks-ci-robots.git # pivotal-cf because pivnet is not foundation's
+#      paths: [ pivnet-metadata/<%= language %>.yml ]
+#<% end %>
 
 <% unless language == 'binary' || language == 'multi' %>
   - name: compile-extensions
@@ -64,12 +89,12 @@ resources: #####################################################################
       uri: https://github.com/cloudfoundry/compile-extensions.git
 <% end %>
 
-  - name: buildpack-checksums
-    type: git
-    source:
-      uri: git@bitbucket.org:cloudfoundry-buildpacks/buildpack-checksums.git
-      private_key: {{buildpack-checksums-private-key}}
-      branch: master
+#  - name: buildpack-checksums
+#    type: git
+#    source:
+#      uri: git@bitbucket.org:cloudfoundry-buildpacks/buildpack-checksums.git
+#      private_key: !!!buildpack-checksums-private-key}}
+#      branch: master
 
   ## Github Releases ##
 
@@ -78,40 +103,40 @@ resources: #####################################################################
     <% else %>
       <% github_release_user = '{{buildpacks-github-org}}' %>
     <% end %>
-  - name: buildpack-github-release
-    type: github-release
-    source:
-      user: <%= github_release_user %>
-      repository: <%= language %>-buildpack
-      access_token: {{buildpacks-github-token}}
+#  - name: buildpack-github-release
+#    type: github-release
+#    source:
+#      user: <%= github_release_user %>
+#      repository: <%= language %>-buildpack
+#      access_token: !!!buildpacks-github-token}}
 
-  - name: buildpack-packager
-    type: github-release
-    source:
-      user: {{buildpacks-github-org}}
-      repository: buildpack-packager
-      access_token: {{buildpacks-github-token}}
+#  - name: buildpack-packager
+#    type: github-release
+#    source:
+#      user: {{buildpacks-github-org}}
+#      repository: buildpack-packager
+#      access_token: !!!buildpacks-github-token}}
 
-  - name: machete
-    type: github-release
-    source:
-      user: {{buildpacks-github-org}}
-      repository: machete
-      access_token: {{buildpacks-github-token}}
+#  - name: machete
+#    type: github-release
+#    source:
+#      user: {{buildpacks-github-org}}
+#      repository: machete
+#      access_token: !!!buildpacks-github-token}}
 
   ## Pivnet Release ##
-
-<% unless language == 'multi' %>
-  - name: pivnet-production
-    type: pivnet
-    source:
-      endpoint: https://network.pivotal.io
-      bucket: pivotalnetwork
-      api_token: {{pivnet-apikey}}
-      product_slug: buildpacks
-      access_key_id: {{pivnet-access-key}}
-      secret_access_key: {{pivnet-secret-key}}
-<% end %>
+#
+#<% unless language == 'multi' %>
+#  - name: pivnet-production
+#    type: pivnet
+#    source:
+#      endpoint: https://network.pivotal.io
+#      bucket: pivotalnetwork
+#      api_token: !!!pivnet-apikey
+#      product_slug: buildpacks
+#      access_key_id: !!!pivnet-access-key}}
+#      secret_access_key: !!!pivnet-secret-key}}
+#<% end %>
 
   ## S3 Buckets ##
 
@@ -133,14 +158,14 @@ resources: #####################################################################
 
   ## Resource Pools ##
 
-  - name: cf-edge-environments
-    type: pool
-    source:
-      branch: resource-pools
-      pool: cf-edge-environments
-      private_key: {{buildpacks-ci-private-key}}
-      uri: {{buildpacks-ci-git-uri}}
-
+#    - name: cf-edge-environments
+#    type: pool
+#    source:
+#      branch: resource-pools
+#      pool: cf-edge-environments
+#      private_key: {{buildpacks-ci-private-key}}
+#      uri: {{buildpacks-ci-git-uri}}
+#
   - name: cf-lts-environments
     type: pool
     source:
@@ -149,12 +174,6 @@ resources: #####################################################################
       private_key: {{buildpacks-ci-private-key}}
       uri: {{buildpacks-ci-git-uri}}
 
-  ## Alerts ##
-
-  - name: failure-alert
-    type: slack-notification
-    source:
-      url: {{concourse-job-failure-notifications-slack-webhook}}
 
 jobs: ################################################################################################################
   <% if language == "php" %>
@@ -174,24 +193,24 @@ jobs: ##########################################################################
           repository: updated-buildpack
           rebase: true
   <% end %>
-  - name: create-buildpack-release-story
-    serial: true
-    public: true
-    plan:
-      - aggregate:
-        - get: pivotal-buildpack
-        - get: pivotal-buildpack-cached
-        - get: buildpacks-ci
-        - get: buildpack
-          resource: buildpack-master
-      - do:
-        - task: create-buildpack-release-story
-          file: buildpacks-ci/tasks/create-buildpack-release-tracker-story/task.yml
-          params:
-            BUILDPACK_NAME: <%= language %>
-            TRACKER_PROJECT_ID: {{cf-buildpacks-public-tracker-id}}
-            TRACKER_REQUESTER_ID: {{cf-buildpacks-requester-id}}
-            TRACKER_API_TOKEN: {{pivotal-tracker-api-token}}
+#  - name: create-buildpack-release-story
+#    serial: true
+#    public: true
+#    plan:
+#      - aggregate:
+#        - get: pivotal-buildpack
+#        - get: pivotal-buildpack-cached
+#        - get: buildpacks-ci
+#        - get: buildpack
+#          resource: buildpack-master
+#      - do:
+#        - task: create-buildpack-release-story
+#          file: buildpacks-ci/tasks/create-buildpack-release-tracker-story/task.yml
+#          params:
+#            BUILDPACK_NAME: <%= language %>
+#            TRACKER_PROJECT_ID: !!!cf-buildpacks-public-tracker-id}}
+#            TRACKER_REQUESTER_ID: !!!cf-buildpacks-requester-id}}
+#            TRACKER_API_TOKEN: !!!pivotal-tracker-api-token}}
   - name: detect-new-version-and-upload-artifacts
     serial: true
     public: true
@@ -201,12 +220,14 @@ jobs: ##########################################################################
         - get: buildpack
           resource: buildpack-master
           trigger: true
+        - get: buildpacks-ci-image
         - get: pivotal-buildpack-cached
         - get: pivotal-buildpack
       - do:
         - task: detect-and-upload
           file: buildpacks-ci/tasks/detect-and-upload/task.yml
           privileged: true
+          image: buildpacks-ci-image
           params:
             GIT_REPO_ORG: <%= git_repo_organization %>
             BUILDPACK_NAME: <%= language %>-buildpack
@@ -219,56 +240,43 @@ jobs: ##########################################################################
           params:
             from: buildpack-artifacts/.*_buildpack-cached-v(.*).zip
             to: /experimental-buildpacks/<%= language %>/
-        on_failure:
-          put: failure-alert
-          params:
-            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
-            channel: {{concourse-job-failure-notifications-slack-channel}}
-            username: concourse
-            icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
-  - name: specs-edge-master
-    serial: true
-    public: true
-    plan:
-      - put: cf-environments
-        resource: cf-edge-environments
-        params:
-          acquire: true
-      - aggregate:
-        - get: buildpacks-ci
-        - get: buildpack
-          passed: [ "detect-new-version-and-upload-artifacts" ]
-          resource: buildpack-master
-          trigger: true
-        - get: pivotal-buildpacks
-          resource: pivotal-buildpack
-          passed: [ "detect-new-version-and-upload-artifacts" ]
-          trigger: true
-        - get: pivotal-buildpacks-cached
-          resource: pivotal-buildpack-cached
-          passed: [ "detect-new-version-and-upload-artifacts" ]
-          trigger: true
-      - do:
-        - task: rspec
-          file: buildpacks-ci/tasks/test-buildpack.yml
-          params:
-            STACKS: cflinuxfs2
-            COMPOSER_GITHUB_OAUTH_TOKEN: {{composer-github-oauth-token}}
-            CF_PASSWORD: {{ci-cf-password}}
-            DOMAIN_NAME: {{domain-name}}
-            RUBYGEM_MIRROR: {{rubygem-mirror}}
-          privileged: true
-          ensure:
-            put: cf-edge-environments
-            params:
-              release: cf-environments
-        on_failure:
-          put: failure-alert
-          params:
-            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
-            channel: {{concourse-job-failure-notifications-slack-channel}}
-            username: concourse
-            icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+#  - name: specs-edge-master
+#    serial: true
+#    public: true
+#    plan:
+#      - put: cf-environments
+#        resource: cf-edge-environments
+#        params:
+#          acquire: true
+#      - aggregate:
+#        - get: buildpacks-ci
+#        - get: buildpack
+#          passed: [ "detect-new-version-and-upload-artifacts" ]
+#          resource: buildpack-master
+#          trigger: true
+#        - get: pivotal-buildpacks
+#          resource: pivotal-buildpack
+#          passed: [ "detect-new-version-and-upload-artifacts" ]
+#          trigger: true
+#        - get: pivotal-buildpacks-cached
+#          resource: pivotal-buildpack-cached
+#          passed: [ "detect-new-version-and-upload-artifacts" ]
+#          trigger: true
+#      - do:
+#        - task: rspec
+#          file: buildpacks-ci/tasks/test-buildpack.yml
+#          params:
+#            STACKS: cflinuxfs2
+#          #  COMPOSER_GITHUB_OAUTH_TOKEN: !!!composer-github-oauth-token
+#            CF_PASSWORD: {{ci-cf-password}}
+#            DOMAIN_NAME: {{domain-name}}
+#            RUBYGEM_MIRROR: {{rubygem-mirror}}
+#          privileged: true
+#          ensure:
+#            put: cf-edge-environments
+#            params:
+#              release: cf-environments
+
   - name: specs-lts-master
     serial: true
     public: true
@@ -291,27 +299,25 @@ jobs: ##########################################################################
           resource: pivotal-buildpack-cached
           passed: [ "detect-new-version-and-upload-artifacts" ]
           trigger: true
+        - get: buildpacks-ci-image
       - do:
         - task: rspec
           file: buildpacks-ci/tasks/test-buildpack.yml
+          image: buildpacks-ci-image
           params:
             STACKS: cflinuxfs2
-            COMPOSER_GITHUB_OAUTH_TOKEN: {{composer-github-oauth-token}}
+         #   COMPOSER_GITHUB_OAUTH_TOKEN: !!!composer-github-oauth-token}}
             CF_PASSWORD: {{ci-cf-password}}
-            DOMAIN_NAME: {{domain-name}}
+            DOMAIN_NAME: 'xip.io'
+            DEPLOYMENT_NAME: '140.211.168.100'
             RUBYGEM_MIRROR: {{rubygem-mirror}}
           privileged: true
+
           ensure:
             put: cf-lts-environments
             params:
               release: cf-environments
-        on_failure:
-          put: failure-alert
-          params:
-            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
-            channel: {{concourse-job-failure-notifications-slack-channel}}
-            username: concourse
-            icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+
   - name: buildpack-release
     serial: true
     public: true
@@ -320,10 +326,10 @@ jobs: ##########################################################################
         - get: buildpacks-ci
         - get: pivotal-buildpacks-cached
           resource: pivotal-buildpack-cached
-          passed: [ "specs-lts-master", "specs-edge-master"]
+          passed: [ "specs-lts-master"]
           trigger: true
         - get: buildpack
-          passed: [ "specs-lts-master", "specs-edge-master" ]
+          passed: [ "specs-lts-master" ]
           resource: buildpack-master
           trigger: true
       - task: check tag not already added
@@ -345,110 +351,92 @@ jobs: ##########################################################################
         - get: buildpack
           resource: buildpack-master
           passed: [ buildpack-release ]
-        - get: buildpack-checksums
+   #     - get: buildpack-checksums
       - task: finalize-buildpack
         file: buildpacks-ci/tasks/finalize-buildpack.yml
         privileged: true
       - task: commit-shas
         file: buildpacks-ci/tasks/commit-shas.yml
         privileged: true
-      - put: buildpack-checksums
-        params:
-          repository: sha-artifacts
-          rebase: true
-      - put: buildpack-github-release
-        params:
-          name: buildpack-artifacts/tag
-          tag: buildpack-artifacts/tag
-          body: buildpack-artifacts/RECENT_CHANGES
-          globs:
-            - buildpack-artifacts/*_buildpack-cached-v*.zip
-            - buildpack-artifacts/*_buildpack-cached-v*.zip.SHA256SUM.txt
-<% unless language == "multi" %>
-  - name: write-pivnet-metadata
-    serial: true
-    public: true
-    plan:
-      - aggregate:
-        - get: buildpacks-ci
-        - get: pivnet-buildpack-metadata
-        - get: pivotal-buildpacks-cached
-          resource: pivotal-buildpack-cached
-          passed: [ buildpack-release ]
-        - get: buildpack
-          resource: buildpack-master
-          passed: [ buildpack-release ]
-      - task: finalize-buildpack
-        file: buildpacks-ci/tasks/finalize-buildpack.yml
-        privileged: true
-      - task: write-pivnet-metadata
-        file: buildpacks-ci/tasks/write-buildpack-pivnet-metadata/task.yml
-        params:
-          BUILDPACK: <%= language %>
-        privileged: true
-      - put: pivnet-buildpack-metadata
-        params:
-          repository: pivnet-buildpack-metadata-artifacts
-          rebase: true
-
-  - name: release-to-pivnet
-    public: true
-    plan:
-      - get: pivotal-buildpack-cached
-        passed: [ write-pivnet-metadata ]
-      - get: pivnet-buildpack-metadata
-        passed: [ write-pivnet-metadata ]
-        trigger: true
-      - put: pivnet-production
-        params:
-          file_glob: pivotal-buildpack-cached/<%= language %>_buildpack-cached-v*.zip
-          s3_filepath_prefix: product-files/buildpacks
-          metadata_file: pivnet-buildpack-metadata/pivnet-metadata/<%= language %>.yml
-<% end %>
-  - name: specs-edge-develop
-    serial: true
-    public: true
-    plan:
-      - put: cf-environments
-        resource: cf-edge-environments
-        params:
-          acquire: true
-      - aggregate:
-        - get: buildpacks-ci
-        - get: brats
-        - get: buildpack
-          resource: buildpack-develop
-          trigger: true
-      - do:
-        - task: rspec
-          file: buildpacks-ci/tasks/test-buildpack.yml
-          params:
-            STACKS: cflinuxfs2
-            COMPOSER_GITHUB_OAUTH_TOKEN: {{composer-github-oauth-token}}
-            CF_PASSWORD: {{ci-cf-password}}
-            DOMAIN_NAME: {{domain-name}}
-            RUBYGEM_MIRROR: {{rubygem-mirror}}
-          privileged: true
-        - task: brats
-          file: buildpacks-ci/tasks/run-brats/task.yml
-          params:
-            BRATS_BRANCH: develop
-            CI_CF_USERNAME: {{ci-cf-username}}
-            CI_CF_PASSWORD: {{ci-cf-password}}
-            LANGUAGE: <%= language %>
-            RUBYGEM_MIRROR: {{rubygem-mirror}}
-            DOMAIN_NAME: {{domain-name}}
-        on_failure:
-          put: failure-alert
-          params:
-            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
-            channel: {{concourse-job-failure-notifications-slack-channel}}
-            username: concourse
-            icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
-        ensure:
-          put: cf-edge-environments
-          params:
-            release: cf-environments
+#      - put: buildpack-checksums
+#        params:
+#          repository: sha-artifacts
+#          rebase: true
+#      - put: buildpack-github-release
+#        params:
+#          name: buildpack-artifacts/tag
+#          tag: buildpack-artifacts/tag
+#          body: buildpack-artifacts/RECENT_CHANGES
+#          globs:
+#            - buildpack-artifacts/*_buildpack-cached-v*.zip
+#            - buildpack-artifacts/*_buildpack-cached-v*.zip.SHA256SUM.txt
+#<% unless language == "multi" %>
+#  - name: write-pivnet-metadata
+#    serial: true
+#    public: true
+#    plan:
+#      - aggregate:
+#        - get: buildpacks-ci
+#        - get: pivnet-buildpack-metadata
+#        - get: pivotal-buildpacks-cached
+#          resource: pivotal-buildpack-cached
+#          passed: [ buildpack-release ]
+#        - get: buildpack
+#          resource: buildpack-master
+#          passed: [ buildpack-release ]
+#      - task: finalize-buildpack
+#        file: buildpacks-ci/tasks/finalize-buildpack.yml
+#        privileged: true
+#      - task: write-pivnet-metadata
+#        file: buildpacks-ci/tasks/write-buildpack-pivnet-metadata/task.yml
+#        params:
+#          BUILDPACK: <%= language %>
+#        privileged: true
+#      - put: pivnet-buildpack-metadata
+#        params:
+#          repository: pivnet-buildpack-metadata-artifacts
+#          rebase: true
+#
+#
+#<% end %>
+#  - name: specs-edge-develop
+#    serial: true
+#    public: true
+#    plan:
+#      - put: cf-environments
+#        resource: cf-edge-environments
+#        params:
+#          acquire: true
+#      - aggregate:
+#        - get: buildpacks-ci
+#        - get: brats
+#        - get: buildpack
+#          resource: buildpack-develop
+#          trigger: true
+#      - do:
+#        - task: rspec
+#          file: buildpacks-ci/tasks/test-buildpack.yml
+#          params:
+#            STACKS: cflinuxfs2
+#          #  COMPOSER_GITHUB_OAUTH_TOKEN: !!!composer-github-oauth-token}}
+#            CF_PASSWORD: {{ci-cf-password}}
+#            DOMAIN_NAME: {{domain-name}}
+#            RUBYGEM_MIRROR: {{rubygem-mirror}}
+#          privileged: true
+#        - task: brats
+#          file: buildpacks-ci/tasks/run-brats/task.yml
+#          params:
+#            BRATS_BRANCH: develop
+#            CI_CF_USERNAME: {{ci-cf-username}}
+#            CI_CF_PASSWORD: {{ci-cf-password}}
+#            LANGUAGE: <%= language %>
+#            RUBYGEM_MIRROR: {{rubygem-mirror}}
+#            DOMAIN_NAME: {{domain-name}}
+#
+#        ensure:
+#          put: cf-edge-environments
+#          params:
+#            release: cf-environments
   - name: specs-lts-develop
     serial: true
     public: true
@@ -463,18 +451,23 @@ jobs: ##########################################################################
         - get: buildpack
           resource: buildpack-develop
           trigger: true
+        - get: buildpacks-ci-image
       - do:
         - task: rspec
           file: buildpacks-ci/tasks/test-buildpack.yml
+          image: buildpacks-ci-image
           params:
             STACKS: cflinuxfs2
-            COMPOSER_GITHUB_OAUTH_TOKEN: {{composer-github-oauth-token}}
+          #  COMPOSER_GITHUB_OAUTH_TOKEN: !!!composer-github-oauth-token}}
             CF_PASSWORD: {{ci-cf-password}}
             DOMAIN_NAME: {{domain-name}}
+            DEPLOYMENT_NAME: '140.211.168.100'
             RUBYGEM_MIRROR: {{rubygem-mirror}}
           privileged: true
         - task: brats
           file: buildpacks-ci/tasks/run-brats/task.yml
+          privileged: true
+          image: buildpacks-ci-image
           params:
             BRATS_BRANCH: develop
             CI_CF_USERNAME: {{ci-cf-username}}
@@ -482,13 +475,8 @@ jobs: ##########################################################################
             LANGUAGE: <%= language %>
             RUBYGEM_MIRROR: {{rubygem-mirror}}
             DOMAIN_NAME: {{domain-name}}
-        on_failure:
-          put: failure-alert
-          params:
-            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
-            channel: {{concourse-job-failure-notifications-slack-channel}}
-            username: concourse
-            icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+            DEPLOYMENT_NAME: '140.211.168.100'
+
         ensure:
           put: cf-lts-environments
           params:
@@ -504,58 +492,60 @@ jobs: ##########################################################################
           trigger: true
         - get: buildpack
           resource: buildpack-develop
+        - get: buildpacks-ci-image
       - task: update-compile-extensions
         file: buildpacks-ci/tasks/update-compile-extensions.yml
         privileged: true
+        image: buildpacks-ci-image
         params: { RUBYGEM_MIRROR: {{rubygem-mirror}}  }
       - put: buildpack-develop
         params:
           repository: buildpack-artifacts
           rebase: true
 <% end %>
-  - name: update-buildpack-packager
-    serial: true
-    public: true
-    plan:
-      - aggregate:
-        - get: buildpacks-ci
-        - get: gem
-          resource: buildpack-packager
-          trigger: true
-        - get: repo-with-gemfile
-          resource: buildpack-develop
-      - task: update-buildpack-packager
-        file: buildpacks-ci/tasks/update-gem-in-gemfile/task.yml
-        privileged: true
-        params:
-          RUBYGEM_MIRROR: {{rubygem-mirror}}
-          GEM_NAME: buildpack-packager
-          GEM_GIT_REPOSITORY: {{buildpack-packager-git-uri-public}}
-          GEMFILE_NAME: cf.Gemfile
-      - put: buildpack-develop
-        params:
-          repository: repo-with-gemfile-artifacts
-          rebase: true
-  - name: update-machete
-    serial: true
-    public: true
-    plan:
-      - aggregate:
-        - get: buildpacks-ci
-        - get: gem
-          resource: machete
-          trigger: true
-        - get: repo-with-gemfile
-          resource: buildpack-develop
-      - task: update-machete
-        file: buildpacks-ci/tasks/update-gem-in-gemfile/task.yml
-        privileged: true
-        params:
-          RUBYGEM_MIRROR: {{rubygem-mirror}}
-          GEM_NAME: machete
-          GEM_GIT_REPOSITORY: {{machete-git-uri-public}}
-          GEMFILE_NAME: cf.Gemfile
-      - put: buildpack-develop
-        params:
-          repository: repo-with-gemfile-artifacts
-          rebase: true
+#  - name: update-buildpack-packager
+#    serial: true
+#    public: true
+#    plan:
+#      - aggregate:
+#        - get: buildpacks-ci
+#        - get: gem
+#          resource: buildpack-packager
+#          trigger: true
+#        - get: repo-with-gemfile
+#          resource: buildpack-develop
+#      - task: update-buildpack-packager
+#        file: buildpacks-ci/tasks/update-gem-in-gemfile/task.yml
+#        privileged: true
+#        params:
+#          RUBYGEM_MIRROR: {{rubygem-mirror}}
+#          GEM_NAME: buildpack-packager
+#          GEM_GIT_REPOSITORY: !!!buildpack-packager-git-uri-public
+#          GEMFILE_NAME: cf.Gemfile
+#      - put: buildpack-develop
+#        params:
+#          repository: repo-with-gemfile-artifacts
+#          rebase: true
+#  - name: update-machete
+#    serial: true
+#    public: true
+#    plan:
+#      - aggregate:
+#        - get: buildpacks-ci
+#        - get: gem
+#          resource: machete
+#          trigger: true
+#        - get: repo-with-gemfile
+#          resource: buildpack-develop
+#      - task: update-machete
+#        file: buildpacks-ci/tasks/update-gem-in-gemfile/task.yml
+#        privileged: true
+#        params:
+#          RUBYGEM_MIRROR: {{rubygem-mirror}}
+#          GEM_NAME: machete
+#          GEM_GIT_REPOSITORY: {{machete-git-uri-public}}
+#          GEMFILE_NAME: cf.Gemfile
+#      - put: buildpack-develop
+#        params:
+#          repository: repo-with-gemfile-artifacts
+#          rebase: true

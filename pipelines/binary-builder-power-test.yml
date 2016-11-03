@@ -1,11 +1,11 @@
-resource_types:
-- name: s3
-  type: docker-image
-  source:
-    repository: 140.211.168.97:5000/s3-resource
-    insecure_registries: ["140.211.168.97:5000"]
-    username: {{username}}
-    password: {{password}}
+#resource_types:
+#- name: s3
+#  type: docker-image
+#  source:
+#    repository: 140.211.168.97:5000/s3-resource
+#    insecure_registries: ["140.211.168.97:5000"]
+#    username: {{username}}
+#    password: {{password}}
 resources:
   - name: binary-builder
     type: git
@@ -15,11 +15,8 @@ resources:
   - name: cflinuxfs2
     type: docker-image
     source:
-      repository: 140.211.168.97:5000/cflinuxfs2
+      repository: ppc64le/cflinuxfs2
       tag: "latest"
-      insecure_registries: ["140.211.168.97:5000"]
-      username: {{username}}
-      password: {{password}}
   - name: buildpacks-ci-image
     type: docker-image
     source:

@@ -42,13 +42,14 @@ class UpdateDependencyInBuildpackJob
 
     source_info = extract_source_info(git_commit_message)
 
-    formatted_story_ids = story_ids.map {|story_id| "[##{story_id}]"}
+    #formatted_story_ids = story_ids.map {|story_id| "[##{story_id}]"}
+    formatted_story_ids="none"
 
     Dir.chdir(buildpack_dir) do
       GitClient.add_everything
       add_remove_message = "Add #{dependency} #{version}"
       add_remove_message += ", remove #{dependency} #{removed_versions.join(', ')}" unless removed_versions.empty?
-      update_commit_message = "#{add_remove_message}\n\n#{source_info}\n\n#{formatted_story_ids.join("\n")}"
+      update_commit_message = "#{add_remove_message}\n\n#{source_info}\n"
       GitClient.safe_commit(update_commit_message)
     end
   end
@@ -56,9 +57,9 @@ class UpdateDependencyInBuildpackJob
   def run!
     buildpack_dir, dependency, version, removed_versions = update_buildpack
 
-    tracker_client = TrackerClient.new(ENV['TRACKER_API_TOKEN'], ENV['TRACKER_PROJECT_ID'], ENV['TRACKER_REQUESTER_ID'].to_i)
-    story_ids = tracker_client.find_unaccepted_story_ids("include new #{dependency} #{version}")
+   # tracker_client = TrackerClient.new(ENV['TRACKER_API_TOKEN'], ENV['TRACKER_PROJECT_ID'], ENV['TRACKER_REQUESTER_ID'].to_i)
+   # story_ids = tracker_client.find_unaccepted_story_ids("include new #{dependency} #{version}")
 
-    write_git_commit(buildpack_dir, dependency, story_ids, version, removed_versions)
+    write_git_commit(buildpack_dir, dependency, nil, version, removed_versions)
   end
 end

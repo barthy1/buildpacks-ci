@@ -73,8 +73,8 @@ class BuildpackDependencyUpdater
 
     buildpack_dependencies_host_domain = ENV.fetch('BUILDPACK_DEPENDENCIES_HOST_DOMAIN', nil)
     raise 'No host domain set via BUILDPACK_DEPENDENCIES_HOST_DOMAIN' unless buildpack_dependencies_host_domain
-
-    /.*filename:\s+binary-builder\/(#{dependency}-(.*)-linux-x64.tgz).*md5:\s+(\w*)\,.*/.match(git_commit_message)
+    platform = RbConfig::CONFIG['host_cpu'] == "powerpc64le" ? "ppc64le" : "x64"
+    /.*filename:\s+binary-builder\/(#{dependency}-(.*)-linux-#{platform}.tgz).*md5:\s+(\w*)\,.*/.match(git_commit_message)
     dependency_filename = $1
     dependency_version = $2
     md5 = $3

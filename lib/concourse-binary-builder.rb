@@ -12,6 +12,8 @@ class ConcourseBinaryBuilder
   attr_reader :platform, :os_name
 
   def initialize(binary_name, task_root_dir, git_ssh_key, platform, os_name)
+    puts "platform ConcourseBinaryBuilder = #{platform}"
+    puts "os_name ConcourseBinaryBuilder = #{os_name}"
     @platform = platform.to_sym
     @os_name = os_name.to_sym
     @git_ssh_key = git_ssh_key
@@ -63,6 +65,8 @@ class ConcourseBinaryBuilder
       end
       @flags << %( --#{key}="#{value}")
     end
+    @flags << " --platform=#{platform}"
+    @flags << " --os=#{os_name}"
   end
 
   def build_dependency
@@ -149,7 +153,10 @@ class ConcourseBinaryBuilder
 
     Dir.chdir(binary_builder_dir) do
       output = `./bin/binary-builder #{flags}`
-      raise "Could not build" unless $?.success?
+      unless $?.success?
+        puts output
+        raise "Could not build"
+      end
     end
 
     output
@@ -197,10 +204,10 @@ class ConcourseBinaryBuilder
   # build the dependency
 
   def source_directory
-    platform_map = { 'x86_64':  'x86_64',
-                     'ppc64le': 'powerpc64le'}
+    platform_map = { 'x86_64' => 'x86_64',
+                     'ppc64le' => 'powerpc64le'}
 
-    os_name_map = {'GNU/Linux': 'linux-gnu'}
+    os_name_map = {'GNU/Linux' => 'linux-gnu'}
 
 
     "#{platform_map[platform]}-#{os_name_map[os_name]}/"

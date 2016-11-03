@@ -64,6 +64,7 @@ class DependencyBuildEnqueuer
       when "dotnet" then version.gsub("v","")
       when "godep" then version.gsub("v","")
       when "glide" then version.gsub("v","")
+      when "nginx" then version.gsub("release-","")
       else version
     end
   end
@@ -74,8 +75,8 @@ class DependencyBuildEnqueuer
     when 'bower'
       download_url = "https://registry.npmjs.org/bower/-/bower-#{version}.tgz"
       verifications << shasum_256_verification(download_url)
-    when "node"
-      download_url = "https://nodejs.org/dist/v#{version}/node-v#{version}.tar.gz"
+      when "node"
+      download_url =  RbConfig::CONFIG['host_cpu'] == "powerpc64le" ? "https://github.com/ibmruntimes/node/archive/v#{version}.tar.gz" : "https://nodejs.org/dist/v#{version}/node-v#{version}.tar.gz"
       verifications << shasum_256_verification(download_url)
     when "godep"
       download_url = "https://github.com/tools/godep/archive/#{version}.tar.gz"

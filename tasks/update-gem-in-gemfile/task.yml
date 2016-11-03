@@ -1,0 +1,19 @@
+---
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: cfbuildpacks/ci
+inputs:
+  - name: gem
+  - name: buildpacks-ci
+  - name: repo-with-gemfile
+outputs:
+  - name: repo-with-gemfile-artifacts
+run:
+  path: buildpacks-ci/tasks/update-gem-in-gemfile/run.sh
+params:
+  RUBYGEM_MIRROR:
+  GEM_NAME:
+  GEM_GIT_REPOSITORY:
+  GEMFILE_NAME:

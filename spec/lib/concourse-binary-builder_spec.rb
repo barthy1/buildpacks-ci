@@ -16,7 +16,6 @@ describe ConcourseBinaryBuilder do
     let(:binary_builder_dir) { File.join(task_root_dir, 'binary-builder') }
     let(:builds_yaml_artifacts_dir) { File.join(task_root_dir, 'builds-yaml-artifacts') }
     let(:binary_artifacts_dir) {File.join(task_root_dir, 'binary-builder-artifacts')}
-    let(:original_source_code_dir) {File.join(binary_artifacts_dir, 'original-source-code')}
 
     let(:built_dir) { File.join(task_root_dir, 'built-yaml') }
     let(:built_yaml_contents) { {dependency => []}.to_yaml }
@@ -33,7 +32,7 @@ describe ConcourseBinaryBuilder do
     subject { described_class.new(dependency, task_root_dir, git_ssh_key, platform, os_name) }
 
     before(:each) do
-      FileUtils.mkdir_p([built_dir, builds_dir, binary_builder_dir])
+      FileUtils.mkdir_p([built_dir, builds_dir, binary_builder_dir, binary_artifacts_dir])
       FileUtils.rm_rf('/tmp/src')
       FileUtils.rm_rf('/tmp/x86_64-linux-gnu')
 
@@ -49,21 +48,13 @@ describe ConcourseBinaryBuilder do
         end
       end
 
+      allow(subject).to receive(:system).and_call_original
       allow(subject).to receive(:add_ssh_key_and_update).with(built_dir, 'binary-built-output')
 
       allow(subject).to receive(:run_binary_builder).with(flags) do |flags|
         Dir.chdir(binary_builder_dir) do
           `touch #{output_file}`
         end
-
-        if dependency == "glide" or dependency == "godep" then
-            FileUtils.mkdir_p('/tmp/src')
-            `touch /tmp/src/main.go`
-        else
-            FileUtils.mkdir_p('/tmp/x86_64-linux-gnu')
-            `touch /tmp/x86_64-linux-gnu/main.c`
-        end
-
 
         "- url: #{source_url}"
       end
@@ -122,10 +113,6 @@ describe ConcourseBinaryBuilder do
     shared_examples_for 'the resulting tar files are copied to the proper location' do
       it 'copies the built binaries' do
         expect(File.exist? "#{binary_artifacts_dir}/#{output_file}").to eq true
-      end
-
-      it 'copies the source to build.tgz' do
-        expect(File.exist? "#{original_source_code_dir}/build.tgz").to eq true
       end
     end
 
@@ -187,6 +174,40 @@ describe ConcourseBinaryBuilder do
       it_behaves_like 'the resulting tar files are copied to the proper location'
     end
 
+    context 'the dependency is dotnet' do
+      let(:dependency) { 'dotnet' }
+      let(:output_file) { 'dotnet.1.0.0-preview2-003131.linux-amd64.tar.gz' }
+      let(:verification_type) { 'git-commit-sha' }
+      let(:verification_value) { 'this-is-a-commit-sha' }
+      let(:source_url) { 'https://github.com/dotnet/cli' }
+      let(:version) { 'v1.0.0-preview2.0.1' }
+
+      before { subject.run }
+
+      it_behaves_like 'a commit is made in builds-yaml-artifacts with the proper git message', 'automated'
+      it_behaves_like 'the resulting tar files are copied to the proper location'
+    end
+
+    context 'the dependency is bower' do
+      let(:dependency)         { 'bower' }
+      let(:output_file)        { 'bower-1.77.90.tgz' }
+      let(:verification_type)  { 'sha256' }
+      let(:verification_value) { 'aaabbbccc111222333' }
+      let(:source_url)         { 'https://registry.npmjs.org/bower/-/bower-1.77.90.tgz' }
+      let(:version)            { '1.77.90' }
+
+      before do
+        expect(subject).to receive(:system).with("curl #{source_url} -o #{binary_builder_dir}/bower-1.77.90.tgz") do
+          `touch #{binary_builder_dir}/bower-#{version}.tgz`
+        end
+
+        subject.run
+      end
+
+      it_behaves_like 'a commit is made in builds-yaml-artifacts with the proper git message', 'automated'
+      it_behaves_like 'the resulting tar files are copied to the proper location'
+    end
+
     context 'the dependency is composer' do
       let(:dependency)    { 'composer' }
       let(:output_file)        { 'composer-1.2.0.phar' }
@@ -196,7 +217,7 @@ describe ConcourseBinaryBuilder do
       let(:version)       { '1.2.0' }
 
       before do
-        allow(subject).to receive(:download_composer).with(source_url) do
+        expect(subject).to receive(:system).with("curl #{source_url} -o #{binary_builder_dir}/composer-1.2.0.phar") do
           `touch #{binary_builder_dir}/composer-#{version}.phar`
         end
 

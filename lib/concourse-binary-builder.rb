@@ -7,7 +7,7 @@ class ConcourseBinaryBuilder
 
   attr_reader :binary_name, :git_ssh_key, :task_root_dir
   attr_reader :binary_builder_dir, :built_dir, :builds_dir
-  attr_reader :builds_yaml_artifacts, :binary_artifacts_dir, :original_source_code_dir, :source_url
+  attr_reader :builds_yaml_artifacts, :binary_artifacts_dir, :source_url
   attr_reader :verification_type, :verification_value, :flags, :latest_build, :remaining_builds
   attr_reader :platform, :os_name
 
@@ -22,8 +22,6 @@ class ConcourseBinaryBuilder
     @builds_dir = File.join(task_root_dir ,'builds-yaml')
     @builds_yaml_artifacts = File.join(task_root_dir, 'builds-yaml-artifacts')
     @binary_artifacts_dir = File.join(task_root_dir, 'binary-builder-artifacts')
-    @original_source_code_dir = File.join(binary_artifacts_dir, 'original-source-code')
-    FileUtils.mkdir_p(original_source_code_dir)
   end
 
   def run
@@ -35,8 +33,6 @@ class ConcourseBinaryBuilder
     end
 
     build_dependency
-
-    tar_dependency_source_code
 
     copy_binaries_to_output_directory
 
@@ -58,7 +54,7 @@ class ConcourseBinaryBuilder
 
     @flags = "--name=#{binary_name}"
     latest_build.each_pair do |key, value|
-      if key == 'md5' || key == 'sha256'
+      if key == 'md5' || key == 'sha256' || key == 'git-commit-sha'
         @verification_type = key
         @verification_value = value
       elsif key == 'gpg-signature'
@@ -70,9 +66,13 @@ class ConcourseBinaryBuilder
   end
 
   def build_dependency
-    if binary_name == "composer"
+    case binary_name
+    when 'bower'
+      @source_url = "https://registry.npmjs.org/bower/-/bower-#{latest_build['version']}.tgz"
+      download_non_build_dependency(source_url, 'bower', 'tgz')
+    when 'composer'
       @source_url = "https://getcomposer.org/download/#{latest_build['version']}/composer.phar"
-      download_composer(source_url)
+      download_non_build_dependency(source_url, 'composer', 'phar')
     else
       binary_builder_output = run_binary_builder(flags)
       /- url:\s(.*)$/.match(binary_builder_output)
@@ -80,36 +80,13 @@ class ConcourseBinaryBuilder
     end
   end
 
-  def download_composer(url)
-      system("curl #{url} -o #{binary_builder_dir}/composer-#{latest_build['version']}.phar") or raise "Could not download composer.phar"
-  end
-
-  def tar_dependency_source_code
-    version_to_build = latest_build['version']
-
-    dependency_source = case binary_name
-                        when "composer" then "#{binary_builder_dir}/composer-#{version_to_build}.phar"
-                        when "glide" then "src/"
-                        when "godep" then "src/"
-                        else source_directory
-                        end
-
-    if binary_name == "composer"
-      system("tar -zcf #{binary_builder_dir}/build.tgz #{dependency_source}") or raise "Could not tar composer-#{version_to_build}.phar"
-    else
-      if Dir.exist?(File.join("/tmp",dependency_source))
-        system("tar -zcf #{binary_builder_dir}/build.tgz -C /tmp ./#{dependency_source}") or raise "Could not create tar"
-      else
-        raise "Could not find original source after build"
-      end
-    end
+  def download_non_build_dependency(url, dependency_name, file_extension)
+      system("curl #{url} -o #{binary_builder_dir}/#{dependency_name}-#{latest_build['version']}.#{file_extension}") or raise "Could not download #{url}"
   end
 
   def copy_binaries_to_output_directory
       FileUtils.cp_r(Dir["#{binary_builder_dir}/*.tgz", "#{binary_builder_dir}/*.tar.gz", "#{binary_builder_dir}/*.phar"], binary_artifacts_dir)
-      FileUtils.cp_r("#{binary_artifacts_dir}/build.tgz", original_source_code_dir)
   end
-
 
   def create_git_commit_msg
     version_built = latest_build['version']
@@ -117,7 +94,7 @@ class ConcourseBinaryBuilder
     ext = case binary_name
             when 'composer' then
               '*.phar'
-            when 'go' then
+            when 'go', 'dotnet' then
               '*.tar.gz'
             else
               '-*.tgz'
@@ -197,7 +174,7 @@ class ConcourseBinaryBuilder
   end
 
   def is_automated
-    automated = %w(composer godep glide nginx node)
+    automated = %w(bower composer dotnet godep glide nginx node)
     automated.include? binary_name
   end
 

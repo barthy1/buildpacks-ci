@@ -6,6 +6,7 @@ RUN apt-get update
 RUN apt-get -y install \
   awscli \
   aufs-tools \
+  curl \
   expect \
   git \
   iptables \
@@ -17,6 +18,7 @@ RUN apt-get -y install \
   php5 \
   python-dev \
   python-pip \
+  shellcheck \
   wget \
   zip
 
@@ -38,7 +40,7 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin/
 RUN mv /usr/bin/composer.phar /usr/bin/composer
 
 # download the CF-CLI
-RUN wget -O- 'https://cli.run.pivotal.io/stable?release=linux64-binary&version=6.21.1&source=github-rel'| tar xz -C /usr/bin
+RUN wget -O- 'https://cli.run.pivotal.io/stable?release=linux64-binary&version=6.22.2&source=github-rel'| tar xz -C /usr/bin
 RUN cf install-plugin Diego-Enabler -f -r CF-Community
 
 #download spiff for spiffy things
@@ -49,12 +51,15 @@ RUN chmod 755 /usr/bin/spiff
 RUN wget -O- https://github.com/github/hub/releases/download/v2.2.1/hub-linux-amd64-2.2.1.tar.gz | tar xz -C /usr/bin --strip-components=1 hub-linux-amd64-2.2.1/hub
 
 # Ensure Concourse Filter binary is present
-RUN wget 'https://github.com/pivotal-cf-experimental/concourse-filter/releases/download/v0.0.1/concourse-filter' && mv concourse-filter /usr/local/bin && chmod +x /usr/local/bin/concourse-filter
+RUN wget 'https://github.com/pivotal-cf-experimental/concourse-filter/releases/download/v0.0.2/concourse-filter' && mv concourse-filter /usr/local/bin && chmod +x /usr/local/bin/concourse-filter
 
 # when docker container starts, ensure login scripts run
 COPY build/*.sh /etc/profile.d/
 
-RUN gem install bosh_cli bosh_cli_plugin_micro rake bundler
+# install buildpacks-ci Gemfile
+RUN gem install bundler
+COPY Gemfile /usr/local/Gemfile
+RUN cd /usr/local && bundle install
 
 #install fly-cli
 RUN curl "https://buildpacks.ci.cf-app.com/api/v1/cli?arch=amd64&platform=linux" -sfL -o /usr/local/bin/fly

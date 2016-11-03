@@ -1,0 +1,24 @@
+---
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: cfbuildpacks/ci
+inputs:
+  - name: pivotal-buildpack
+  - name: pivotal-buildpack-cached
+  - name: buildpacks-ci
+  - name: buildpack
+outputs:
+  - name: buildpack-artifacts
+run:
+  path: bash
+  args:
+    - -cl
+    - |
+      set -e
+      pushd buildpacks-ci
+        bundle exec tasks/detect-and-upload/run.rb
+      popd
+params:
+  RUBYGEM_MIRROR:

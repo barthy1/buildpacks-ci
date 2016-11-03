@@ -1,4 +1,4 @@
-<% supported_languages = %w(go ruby binary staticfile nodejs php python java java-offline) %>
+<% supported_languages = %w(dotnet-core go ruby binary staticfile nodejs php python java java-offline) %>
 ---
 resource_types:
   - name: slack-notification
@@ -42,14 +42,6 @@ resources:
       uri: {{deployments-git-uri}}
       private_key: {{deployments-private-key}}
       branch: master
-  - name: cf-release-deployment
-    type: bosh-deployment
-    source:
-      target: https://cf-release.buildpacks.ci.cf-app.com:25555
-      username: admin
-      password: {{bosh-lite-password}}
-      deployment: cf-warden
-      ignore_ssl: true
   - name: cf-release-cf-deployment
     type: bosh-deployment
     source:
@@ -118,9 +110,12 @@ groups:
       - recreate-bosh-lite
       - deploy-cf-and-diego-to-cf-release
       - cats
+      - destroy-bosh-lite
       - ship-it
-<% supported_languages.reject{|l| l.include?('java') }.each do |language| %>
+<% (supported_languages - %w(java java-offline dotnet-core)).each do |language| %>
       - deprecated-bosh-release-<%= language %>
+<% end %>
+<% (supported_languages - %w(java java-offline)).each do |language| %>
       - update-<%= language %>-buildpack-bosh-release
       - cf-release for <%= language %>
 <% end %>
@@ -138,7 +133,7 @@ groups:
 jobs:
   - name: recreate-bosh-lite
     serial: true
-    serial_groups: [ stacks ]
+    serial_groups: [ cf-release ]
     public: true
     plan:
       - aggregate:
@@ -202,6 +197,7 @@ jobs:
           - get: php-buildpack-github-release
           - get: staticfile-buildpack-github-release
           - get: binary-buildpack-github-release
+          - get: dotnet-core-buildpack-github-release
         - task: generate-manifest
           file: buildpacks-ci/tasks/diego-make-manifest.yml
           params:
@@ -246,7 +242,7 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "cf-release deploy-cf-and-diego-to-cf-release job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
@@ -280,6 +276,8 @@ jobs:
           passed: [ deploy-cf-and-diego-to-cf-release ]
         - get: binary-buildpack-github-release
           passed: [ deploy-cf-and-diego-to-cf-release ]
+        - get: dotnet-core-buildpack-github-release
+          passed: [ deploy-cf-and-diego-to-cf-release ]
       - do:
         - task: cats
           file: buildpacks-ci/tasks/run-cats.yml
@@ -306,10 +304,32 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "cf-release cats job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+
+  - name: destroy-bosh-lite
+    serial: true
+    serial_groups: [ cf-release ]
+    public: true
+    plan:
+      - aggregate:
+        - get: deployments-buildpacks
+          passed: [ cats ]
+          trigger: true
+        - get: buildpacks-ci
+      - task: destroy-cf-release-bosh-lite
+        file: buildpacks-ci/tasks/destroy-bosh-lite/task.yml
+        params:
+          DEPLOYMENT_NAME: cf-release.buildpacks.ci
+          BOSH_PRIVATE_KEY: {{bosh_private_key}}
+          AWS_ACCESS_KEY_ID: {{buildpacks_ci_aws_access_key_id}}
+          AWS_SECRET_ACCESS_KEY: {{buildpacks_ci_aws_secret_access_key}}
+          BOSH_LITE_NAME: cf-release.buildpacks.ci
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
+        attempts: 5
+
   - name: ship-it
     serial: true
     public: true
@@ -334,6 +354,8 @@ jobs:
           passed: [ cats ]
         - get: binary-buildpack-github-release
           passed: [ cats ]
+        - get: dotnet-core-buildpack-github-release
+          passed: [ cats ]
   - name: ship-it-java
     serial: true
     public: true
@@ -349,6 +371,7 @@ jobs:
         - get: java-offline-buildpack-github-release
           passed: [ cats ]
 <% supported_languages.each do |language| %>
+  <% if language != 'dotnet-core'%>
   - name: deprecated-bosh-release-<%= language %>
     serial: true
     serial_groups: [cf-release-buildpacks]
@@ -381,7 +404,7 @@ jobs:
             BLOB_GLOB: ../blob/<%= language %>*.zip
             BLOB_NAME: <%= language %>-buildpack
             <% end %>
-            RELEASE_NAME: <%= language %>-buildpack-release
+            RELEASE_NAME: <%= language %>-buildpack
             RELEASE_DIR: release/<%= language %>-buildpack-release
         - put: buildpack-releases
           params:
@@ -390,10 +413,11 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "<%= language %>-buildpack-depcreated-bosh-release job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+    <% end %>
   - name: update-<%= language %>-buildpack-bosh-release
     serial: true
     serial_groups: [cf-release-buildpacks]
@@ -426,7 +450,7 @@ jobs:
             BLOB_GLOB: blob/<%= language %>*.zip
             BLOB_NAME: <%= language %>-buildpack
             <% end %>
-            RELEASE_NAME: <%= language %>-buildpack-release
+            RELEASE_NAME: <%= language %>-buildpack
             RELEASE_DIR: release
         - put: <%= language %>-buildpack-bosh-release
           params:
@@ -435,7 +459,7 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "<%= language %>-buildpack-bosh-release job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
@@ -462,7 +486,9 @@ jobs:
               - java-buildpack-v*.zip
           <% end %>
           passed:
+          <% if language != 'dotnet-core'%>
             - deprecated-bosh-release-<%= language %>
+          <% end %>
             - update-<%= language %>-buildpack-bosh-release
           trigger: true
       - do:
@@ -482,7 +508,7 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "cf-release cf-release for <%= language %> job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png

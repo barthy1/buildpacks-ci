@@ -9,7 +9,6 @@ popd
 
 DOMAIN_NAME=${DOMAIN_NAME:-cf-app.com}
 
-
 if [ "$DIEGO_DOCKER_ON" = "true" ]
 then
   cf api api.$DEPLOYMENT_NAME.$DOMAIN_NAME --skip-ssl-validation
@@ -21,7 +20,5 @@ bosh run errand acceptance_tests
 
 if [ "$DIEGO_DOCKER_ON" = "true" ]
 then
-  cf api api.$DEPLOYMENT_NAME.$DOMAIN_NAME --skip-ssl-validation
-  cf login -u $CI_CF_USERNAME -p $CI_CF_PASSWORD
   cf disable-feature-flag diego_docker
 fi

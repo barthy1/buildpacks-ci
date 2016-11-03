@@ -5,29 +5,86 @@ resource_types:
     source:
       repository: cfcommunity/slack-notification-resource
 
-resources:
+resources: ###########################################################################################################
+
+  ## Cron Resource ##
+
   - name: monday-funday
     type: cron
     source:
       expression: 0 5 * * 1
       location: {{current-timezone}}
+
+  ## Git Repos ##
+
   - name: buildpacks-ci
     type: git
     source:
       uri: {{buildpacks-ci-git-uri-public}}
       branch: {{buildpacks-ci-git-uri-public-branch}}
+
   - name: stacks
     type: git
     source:
       uri: git@github.com:cloudfoundry/stacks.git
       branch: master
       private_key: {{stacks-private-key}}
+
+  - name: new-cves
+    type: git
+    source:
+      uri: {{buildpacks-ci-git-uri}}
+      branch: new-cve-notifications
+      private_key: {{buildpacks-ci-private-key}}
+      paths: [ ubuntu14.04.yaml ]
+
+  - name: deployments-buildpacks
+    type: git
+    source:
+      uri: {{deployments-git-uri}}
+      private_key: {{deployments-private-key}}
+      branch: master
+
+  - name: bosh-lite
+    type: git
+    source:
+      uri: https://github.com/cloudfoundry/bosh-lite
+
+  - name: cflinuxfs2-rootfs-release
+    type: git
+    source:
+      uri: git@github.com:cloudfoundry/cflinuxfs2-rootfs-release.git
+      branch: master
+      private_key: {{cflinuxfs2-rootfs-private-key}}
+
   - name: stacks-release
     type: git
     source:
       uri: git@github.com:pivotal-cf-experimental/stacks-release.git
       branch: master
       private_key: {{stacks-release-private-key}}
+
+  - name: diego-release
+    type: git
+    source:
+      uri: https://github.com/cloudfoundry/diego-release
+      branch: master
+
+  - name: cf-release-rc
+    type: git
+    source:
+      uri: {{cf-release-git-uri}}
+      branch: release-candidate
+
+  - name: cf-release-develop
+    type: git
+    source:
+      uri: git@github.com:cloudfoundry/cf-release
+      branch: develop
+      private_key: {{cf-release-private-key}}
+
+  ## S3 Buckets ##
+
   - name: stack-s3
     type: s3
     source:
@@ -35,6 +92,7 @@ resources:
       regexp: cflinuxfs2-(.*).tar.gz
       access_key_id: {{pivotal-buildpacks-s3-access-key}}
       secret_access_key: {{pivotal-buildpacks-s3-secret-key}}
+
   - name: receipt-s3
     type: s3
     source:
@@ -42,27 +100,9 @@ resources:
       regexp: cflinuxfs2_receipt-(.*)
       access_key_id: {{pivotal-buildpacks-s3-access-key}}
       secret_access_key: {{pivotal-buildpacks-s3-secret-key}}
-  - name: version
-    type: semver
-    source:
-      bucket: {{buildpacks-binaries-s3-bucket}}
-      key: versions/stack
-      access_key_id: {{pivotal-buildpacks-s3-access-key}}
-      secret_access_key: {{pivotal-buildpacks-s3-secret-key}}
-  - name: cflinuxfs2-rootfs-release-version
-    type: semver
-    source:
-      bucket: {{buildpacks-binaries-s3-bucket}}
-      initial_version: 0.1.0-rc.1
-      key: versions/cflinuxfs2-rootfs-release
-      access_key_id: {{pivotal-buildpacks-s3-access-key}}
-      secret_access_key: {{pivotal-buildpacks-s3-secret-key}}
-  - name: deployments-buildpacks
-    type: git
-    source:
-      uri: {{deployments-git-uri}}
-      private_key: {{deployments-private-key}}
-      branch: master
+
+  ## BOSH Deployments ##
+
   - name: stacks-cf-deployment
     type: bosh-deployment
     source:
@@ -71,6 +111,7 @@ resources:
       password: {{bosh-lite-password}}
       deployment: cf-warden
       ignore_ssl: true
+
   - name: stacks-diego-deployment
     type: bosh-deployment
     source:
@@ -79,6 +120,7 @@ resources:
       password: {{bosh-lite-password}}
       deployment: cf-warden-diego
       ignore_ssl: true
+
   - name: stacks-rootfs-deployment
     type: bosh-deployment
     source:
@@ -87,51 +129,36 @@ resources:
       password: {{bosh-lite-password}}
       deployment: rootfs-smoke-test
       ignore_ssl: true
-  - name: bosh-lite
-    type: git
-    source:
-      uri: https://github.com/cloudfoundry/bosh-lite
-  - name: cflinuxfs2-rootfs-release
-    type: git
-    source:
-      uri: git@github.com:cloudfoundry/cflinuxfs2-rootfs-release.git
-      branch: master
-      private_key: {{cflinuxfs2-rootfs-private-key}}
-  - name: diego-release
-    type: git
-    source:
-      uri: https://github.com/cloudfoundry/diego-release
-      branch: master
+
+  ## bosh.io Releases ##
+
   - name: diego-bosh-release
     type: bosh-io-release
     tarball: true
     source:
       repository: cloudfoundry/diego-release
+
   - name: etcd-bosh-release
     type: bosh-io-release
     tarball: true
     source:
       repository: cloudfoundry-incubator/etcd-release
+
   - name: garden-linux-bosh-release
     type: bosh-io-release
     tarball: true
     source:
       repository: cloudfoundry-incubator/garden-linux-release
-  - name: cf-release-rc
-    type: git
-    source:
-      uri: {{cf-release-git-uri}}
-      branch: release-candidate
-  - name: cf-release-develop
-    type: git
-    source:
-      uri: git@github.com:cloudfoundry/cf-release
-      branch: develop
-      private_key: {{cf-release-private-key}}
+
+  ## bosh.io stemcell ##
+
   - name: lite-stemcell
     type: bosh-io-stemcell
     source:
       name: bosh-warden-boshlite-ubuntu-trusty-go_agent
+
+  ## Docker Image ##
+
   - name: docker-cflinuxfs2-rootfs
     type: docker-image
     source:
@@ -139,6 +166,7 @@ resources:
       username: {{buildpacks-docker-username}}
       password: {{buildpacks-docker-password}}
       email: cf-buildpacks-eng@pivotal.io
+
   - name: docker-cflinuxfs2-rootfs-tagged
     type: docker-image
     source:
@@ -146,6 +174,9 @@ resources:
       username: {{buildpacks-docker-username}}
       password: {{buildpacks-docker-password}}
       email: cf-buildpacks-eng@pivotal.io
+
+  ## Github Release ##
+
   - name: stack-github-release
     type: github-release
     source:
@@ -153,6 +184,7 @@ resources:
       user: {{buildpacks-github-org}}
       repository: stacks
       access_token: {{buildpacks-github-token}}
+
   - name: cflinuxfs2-rootfs-github-release
     type: github-release
     source:
@@ -160,18 +192,35 @@ resources:
       user: {{buildpacks-github-org}}
       repository: cflinuxfs2-rootfs-release
       access_token: {{buildpacks-github-token}}
-  - name: new-cves
-    type: git
+
+  ## Semver Versions ##
+
+  - name: version
+    type: semver
     source:
-      uri: {{buildpacks-ci-git-uri}}
-      branch: new-cve-notifications
-      private_key: {{buildpacks-ci-private-key}}
-      paths: [ ubuntu14.04.yaml ]
+      bucket: {{buildpacks-binaries-s3-bucket}}
+      key: versions/stack
+      access_key_id: {{pivotal-buildpacks-s3-access-key}}
+      secret_access_key: {{pivotal-buildpacks-s3-secret-key}}
+
+  - name: cflinuxfs2-rootfs-release-version
+    type: semver
+    source:
+      bucket: {{buildpacks-binaries-s3-bucket}}
+      initial_version: 0.1.0-rc.1
+      key: versions/cflinuxfs2-rootfs-release
+      access_key_id: {{pivotal-buildpacks-s3-access-key}}
+      secret_access_key: {{pivotal-buildpacks-s3-secret-key}}
+
+  ## Slack Alerts ##
+
   - name: failure-alert
     type: slack-notification
     source:
       url: {{concourse-job-failure-notifications-slack-webhook}}
-jobs:
+
+jobs: ################################################################################################################
+
   - name: notification
     serial: true
     public: true
@@ -186,6 +235,7 @@ jobs:
           TRACKER_PROJECT_ID: {{cf-buildpacks-public-tracker-id}}
           TRACKER_API_TOKEN: {{pivotal-tracker-api-token}}
           TRACKER_REQUESTER_ID: {{cf-buildpacks-requester-id}}
+
   - name: recreate-bosh-lite
     serial: true
     serial_groups:
@@ -198,6 +248,8 @@ jobs:
           passed: [ "notification" ]
           trigger: true
         - get: buildpacks-ci
+        - get: new-cves
+          trigger: true
       - task: recreate-bosh-lite
         file: buildpacks-ci/tasks/recreate-bosh-lite/task.yml
         params:
@@ -222,6 +274,7 @@ jobs:
           params:
             repository: deployments-buildpacks-artifacts
             rebase: true
+
   - name: build-rootfs
     serial: true
     public: true
@@ -230,8 +283,6 @@ jobs:
         - get: buildpacks-ci
         - get: deployments-buildpacks
           passed: [ "recreate-bosh-lite" ]
-          trigger: true
-        - get: new-cves
           trigger: true
       - aggregate:
         - get: stacks
@@ -261,10 +312,11 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "stacks build-rootfs job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+
   - name: generate-stacks-manifests
     serial: true
     serial_groups: [ stacks ]
@@ -339,6 +391,7 @@ jobs:
           params:
             repository: generate-manifest-artifacts
             rebase: true
+
   - name: deploy-rootfs-to-stacks
     serial: true
     serial_groups: [ stacks ]
@@ -368,6 +421,8 @@ jobs:
       - do:
         - task: overwrite-cflinuxfs2-rootfs-release
           file: buildpacks-ci/tasks/overwrite-cflinuxfs2-rootfs-release.yml
+          params:
+            ROOTFS_RELEASE: cflinuxfs2-rootfs
         - put: stacks-rootfs-deployment
           params:
             manifest: deployments-buildpacks/deployments/stacks.buildpacks.ci/rootfs-smoke-test.yml
@@ -394,10 +449,11 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "deploy-rootfs-to-stacks job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+
   - name: deploy-cf-to-stacks
     serial: true
     serial_groups: [ stacks ]
@@ -436,10 +492,11 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "deploy-cf-to-stacks job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+
   - name: deploy-diego-to-stacks
     serial: true
     serial_groups: [ stacks ]
@@ -476,10 +533,11 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "deploy-diego-to-stacks job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+
   - name: cats
     serial: true
     serial_groups: [ stacks ]
@@ -527,10 +585,33 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "stacks cats job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+
+  - name: destroy-bosh-lite
+    serial: true
+    serial_groups:
+      - stacks
+    public: true
+    plan:
+      - aggregate:
+        - get: deployments-buildpacks
+          passed: [ cats ]
+          trigger: true
+        - get: buildpacks-ci
+      - task: destroy-stacks-bosh-lite
+        file: buildpacks-ci/tasks/destroy-bosh-lite/task.yml
+        params:
+          DEPLOYMENT_NAME: stacks.buildpacks.ci
+          BOSH_PRIVATE_KEY: {{bosh_private_key}}
+          AWS_ACCESS_KEY_ID: {{buildpacks_ci_aws_access_key_id}}
+          AWS_SECRET_ACCESS_KEY: {{buildpacks_ci_aws_secret_access_key}}
+          BOSH_LITE_NAME: stacks.buildpacks.ci
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
+        attempts: 5
+
   - name: shipit
     serial: true
     public: true
@@ -556,9 +637,9 @@ jobs:
           params: { bump: final }
       - do:
         - task: update-receipt
-          file: buildpacks-ci/tasks/update-rootfs-receipt.yml
+          file: buildpacks-ci/tasks/update-rootfs-receipt/task.yml
         - task: update-filename
-          file: buildpacks-ci/tasks/update-rootfs-filename.yml
+          file: buildpacks-ci/tasks/update-rootfs-filename/task.yml
         - put: stacks
           params:
             repository: new-stack-commit
@@ -574,10 +655,11 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "stacks shipit job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+
   - name: reset-minor-version-to-rc
     serial: true
     public: true
@@ -594,6 +676,7 @@ jobs:
         params: {file: version/number}
       - put: cflinuxfs2-rootfs-release-version
         params: {file: cflinuxfs2-rootfs-release-version/number}
+
   - name: upload-to-github
     serial: true
     public: true
@@ -614,10 +697,11 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "stacks upload-to-github job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+
   - name: upload-to-docker
     serial: true
     public: true
@@ -647,10 +731,11 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "stacks upload-to-docker job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+
   - name: create-bosh-release-deprecated
     serial: true
     public: true
@@ -681,10 +766,11 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "stacks create-bosh-release job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+
   - name: create-cflinuxfs2-rootfs-release
     serial: true
     public: true
@@ -710,13 +796,13 @@ jobs:
             RELEASE_DIR: cflinuxfs2-rootfs-release
             ACCESS_KEY_ID: {{cloudfoundry-s3-access-key}}
             SECRET_ACCESS_KEY: {{cloudfoundry-s3-secret-key}}
+        - task: create-release-body
+          file: buildpacks-ci/tasks/create-rootfs-bosh-release-github-release-notes/task.yml
+        - task: create-release-commit
+          file: buildpacks-ci/tasks/create-rootfs-bosh-release-commit/task.yml
         - put: cflinuxfs2-rootfs-release
           params:
             repository: release-artifacts
-        - task: create-release-body
-          file: buildpacks-ci/tasks/create-rootfs-bosh-release-github-release-notes.yml
-        - task: create-release-commit
-          file: buildpacks-ci/tasks/create-rootfs-bosh-release-commit.yml
         - put: cflinuxfs2-rootfs-github-release
           params:
             name: cflinuxfs2-rootfs-release-version/number
@@ -729,10 +815,11 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "stacks create-cflinuxfs2-rootfs-release job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+
   - name: upload-to-cf-release
     serial: true
     public: true
@@ -764,7 +851,7 @@ jobs:
         on_failure:
           put: failure-alert
           params:
-            text: "stacks upload-to-cf-release job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
+            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png

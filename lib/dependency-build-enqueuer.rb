@@ -1,4 +1,5 @@
 # encoding: utf-8
+require 'octokit'
 require 'yaml'
 require_relative 'git-client'
 
@@ -22,7 +23,7 @@ class DependencyBuildEnqueuer
     # We use the <dependency>-new.yaml file to get a list of the new
     # versions to build. For each version in this file, we make a commit to
     # <dependency>-builds.yaml with the proper build information
-    # Automated deps: node, nginx, glide, godep, composer
+    # Automated deps: bower, dotnet, node, nginx, glide, godep, composer
 
     new_dependency_versions_file = File.join(new_releases_dir, "#{dependency}-new.yaml")
     new_dependency_versions = YAML.load_file(new_dependency_versions_file)
@@ -30,8 +31,7 @@ class DependencyBuildEnqueuer
     dependency_builds_file = File.join(binary_builds_dir, "#{dependency}-builds.yml")
 
     new_dependency_versions.each do |ver|
-      next if prerelease_version?(ver)
-      ver = massage_version_for_manifest_format(ver)
+      next if (prerelease_version?(ver) && dependency != 'dotnet')
 
       new_build = {"version" => ver}
       dependency_verification_tuples = DependencyBuildEnqueuer.build_verifications_for(dependency, ver)
@@ -53,13 +53,6 @@ class DependencyBuildEnqueuer
 
   private
 
-  def massage_version_for_manifest_format(version)
-    case dependency
-      when "nginx" then version.gsub("release-","")
-      else version
-    end
-  end
-
   def prerelease_version?(version)
     version = massage_version_for_semver(version)
     Gem::Version.new(version).prerelease?
@@ -68,9 +61,9 @@ class DependencyBuildEnqueuer
 
   def massage_version_for_semver(version)
     case dependency
+      when "dotnet" then version.gsub("v","")
       when "godep" then version.gsub("v","")
       when "glide" then version.gsub("v","")
-      when "nginx" then version.gsub("release-","")
       else version
     end
   end
@@ -78,6 +71,9 @@ class DependencyBuildEnqueuer
   def self.build_verifications_for(dependency, version)
     verifications = []
     case dependency
+    when 'bower'
+      download_url = "https://registry.npmjs.org/bower/-/bower-#{version}.tgz"
+      verifications << shasum_256_verification(download_url)
     when "node"
       download_url = "https://nodejs.org/dist/v#{version}/node-v#{version}.tar.gz"
       verifications << shasum_256_verification(download_url)
@@ -95,7 +91,16 @@ class DependencyBuildEnqueuer
       gpg_signature = `curl -sL #{gpg_signature_url}`
       verifications << ['gpg-rsa-key-id', 'A1C052F8']
       verifications << ['gpg-signature', gpg_signature]
+    when "dotnet"
+      verifications << git_commit_sha_verification('dotnet/cli', version)
     end
+  end
+
+  def self.git_commit_sha_verification(repo, version)
+    t = Octokit.tags(repo).find do |t|
+      t.name == version
+    end
+    [ 'git-commit-sha', t[:commit][:sha] ]
   end
 
   def self.shasum_256_verification(download_url)

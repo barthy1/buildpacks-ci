@@ -5,11 +5,6 @@ resources:
     source:
       uri: {{buildpacks-ci-git-uri-public}}
       branch:  {{buildpacks-ci-git-uri-public-branch}}
-  - name: deployments-buildpacks
-    type: git
-    source:
-      uri: {{deployments-git-uri}}
-      private_key: {{deployments-private-key}}
   - name: buildpack-packager
     type: git
     source:
@@ -45,16 +40,6 @@ resources:
       pool: cf-edge-environments
       private_key: {{buildpacks-ci-private-key}}
       uri: {{buildpacks-ci-git-uri}}
-  - name: cf-release
-    type: git
-    source:
-      uri: {{cf-release-git-uri}}
-  - name: nanny-time-resource
-    type: time
-    source:
-      interval: 12h
-      start: 7:00 -0400
-      stop: 12:00 -0400
 jobs:
   - name: buildpack-packager-specs
     serial: true
@@ -79,8 +64,6 @@ jobs:
           passed: [ buildpack-packager-specs ]
       - task: bump-buildpack-packager-version
         file: buildpacks-ci/tasks/bump-buildpack-packager-version.yml
-        params:
-          RUBYGEM_MIRROR: {{rubygem-mirror}}
       - put: buildpack-packager
         params:
           repository: buildpack-packager-artifacts
@@ -140,8 +123,6 @@ jobs:
           passed: [ machete-specs ]
       - task: bump-machete-version
         file: buildpacks-ci/tasks/bump-machete-version.yml
-        params:
-          RUBYGEM_MIRROR: {{rubygem-mirror}}
       - put: machete
         params:
           repository: machete-artifacts
@@ -159,8 +140,6 @@ jobs:
       - task: create-new-machete-release
         file: buildpacks-ci/tasks/release-machete.yml
         privileged: true
-        params:
-          RUBYGEM_MIRROR: {{rubygem-mirror}}
       - put: machete-github-release
         params:
           name: machete-artifacts/tag

@@ -2,7 +2,9 @@ resources:
   - name: brats
     type: git
     source:
-      uri: https://github.com/cloudfoundry/brats.git
+      uri: git@github.com:cloudfoundry/brats.git
+      private_key: {{brats-private-key}}
+      branch: master
   - name: brats-time-resource
     type: time
     source:
@@ -13,7 +15,7 @@ resources:
     type: git
     source:
       uri: {{buildpacks-ci-git-uri-public}}
-      branch:  {{buildpacks-ci-git-uri-public-branch}}
+      branch: {{buildpacks-ci-git-uri-public-branch}}
   - name: cf-edge-environments
     type: pool
     source:
@@ -29,8 +31,22 @@ resources:
       private_key: {{buildpacks-ci-private-key}}
       uri: {{buildpacks-ci-git-uri}}
 
+  - name: buildpack-packager
+    type: github-release
+    source:
+      user: {{buildpacks-github-org}}
+      repository: buildpack-packager
+      access_token: {{buildpacks-github-token}}
+
+  - name: machete
+    type: github-release
+    source:
+      user: {{buildpacks-github-org}}
+      repository: machete
+      access_token: {{buildpacks-github-token}}
+
 jobs:
-<% %w(go python nodejs php ruby jruby).each do |language| %>
+<% %w(go python nodejs php ruby jruby dotnet-core java).each do |language| %>
   - name: brats-<%= language %>-lts
     serial: true
     public: true
@@ -45,13 +61,14 @@ jobs:
         - get: brats
         - {get: brats-time-resource, trigger: true}
       - task: bin-tests
-        file: buildpacks-ci/tasks/brats.yml
+        file: buildpacks-ci/tasks/run-brats/task.yml
         params:
           LANGUAGE: <%= language %>
           CI_CF_USERNAME: {{ci-cf-username}}
           CI_CF_PASSWORD: {{ci-cf-password}}
           RUBYGEM_MIRROR: {{rubygem-mirror}}
           DOMAIN_NAME: {{domain-name}}
+          BRATS_BRANCH: master
         privileged: true
         ensure:
           put: cf-lts-environments
@@ -71,68 +88,65 @@ jobs:
         - get: brats
         - {get: brats-time-resource, trigger: true}
       - task: bin-tests
-        file: buildpacks-ci/tasks/brats.yml
+        file: buildpacks-ci/tasks/run-brats/task.yml
         params:
           LANGUAGE: <%= language %>
           CI_CF_USERNAME: {{ci-cf-username}}
           CI_CF_PASSWORD: {{ci-cf-password}}
           RUBYGEM_MIRROR: {{rubygem-mirror}}
           DOMAIN_NAME: {{domain-name}}
+          BRATS_BRANCH: master
         privileged: true
         ensure:
           put: cf-edge-environments
           params:
             release: cf-environments
 <% end %>
-  - name: brats-safe-edge
+  - name: update-buildpack-packager
     serial: true
     public: true
     plan:
-      - put: cf-environments
-        resource: cf-edge-environments
-        params:
-          acquire: true
-        timeout: 3h
       - aggregate:
         - get: buildpacks-ci
-        - get: brats
-        - {get: brats-time-resource, trigger: true}
-      - task: bin-tests
-        file: buildpacks-ci/tasks/brats.yml
-        params:
-          LANGUAGE: safe
-          CI_CF_USERNAME: {{ci-cf-username}}
-          CI_CF_PASSWORD: {{ci-cf-password}}
-          RUBYGEM_MIRROR: {{rubygem-mirror}}
-          DOMAIN_NAME: {{domain-name}}
+        - get: gem
+          resource: buildpack-packager
+          trigger: true
+        - get: repo-with-gemfile
+          resource: brats
+      - task: update-buildpack-packager
+        file: buildpacks-ci/tasks/update-gem-in-gemfile/task.yml
         privileged: true
-        ensure:
-          put: cf-edge-environments
-          params:
-            release: cf-environments
-  - name: brats-safe-lts
+        params:
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
+          GEM_NAME: buildpack-packager
+          GEM_GIT_REPOSITORY: {{buildpack-packager-git-uri-public}}
+          GEMFILE_NAME: Gemfile
+      - put: brats
+        params:
+          repository: repo-with-gemfile-artifacts
+          rebase: true
+
+  - name: update-machete
     serial: true
     public: true
     plan:
-      - put: cf-environments
-        resource: cf-lts-environments
-        params:
-          acquire: true
-        timeout: 3h
       - aggregate:
         - get: buildpacks-ci
-        - get: brats
-        - {get: brats-time-resource, trigger: true}
-      - task: bin-tests
-        file: buildpacks-ci/tasks/brats.yml
-        params:
-          LANGUAGE: safe
-          CI_CF_USERNAME: {{ci-cf-username}}
-          CI_CF_PASSWORD: {{ci-cf-password}}
-          RUBYGEM_MIRROR: {{rubygem-mirror}}
-          DOMAIN_NAME: {{domain-name}}
+        - get: gem
+          resource: machete
+          trigger: true
+        - get: repo-with-gemfile
+          resource: brats
+      - task: update-machete
+        file: buildpacks-ci/tasks/update-gem-in-gemfile/task.yml
         privileged: true
-        ensure:
-          put: cf-lts-environments
-          params:
-            release: cf-environments
+        params:
+          RUBYGEM_MIRROR: {{rubygem-mirror}}
+          GEM_NAME: machete
+          GEM_GIT_REPOSITORY: {{machete-git-uri-public}}
+          GEMFILE_NAME: Gemfile
+      - put: brats
+        params:
+          repository: repo-with-gemfile-artifacts
+          rebase: true
+

@@ -1,11 +1,2 @@
 ---
-composer:
-- version: 1.2.0
-  sha256: dc80131545ed7f7b1369ae058824587f0718892f6a84bd86cfb0f28ab5e39095
-  timestamp: 2016-07-19 05:23:46 UTC
-- version: 1.2.1
-  sha256: c2e04040b807a8530e5c83de56bdaaf63a0f183f8fd449bbe6e41f660e647427
-  timestamp: 2016-09-12 10:07:42 UTC
-- version: 1.2.2
-  sha256: c6ae4e099351233f5f82ade9738475eec6587aadf9ffe66fec4c350b329fbb32
-  timestamp: 2016-11-03 17:04:07 UTC
+composer: []

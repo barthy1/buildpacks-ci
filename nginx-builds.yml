@@ -1,15 +1,15 @@
 ---
 nginx:
-  - version: 1.11.6
-    gpg-rsa-key-id: A1C052F8
-    gpg-signature: |
-      -----BEGIN PGP SIGNATURE-----
-
-      iQEcBAABCAAGBQJYKyZSAAoJEFIKmZOhwFL4HwwH/314HqIjkDJ098PWF1cLYDNu
-      PaWrJIxSSOwmqPnRhEyXciPLF718ppEoEEvRwMnoAY/ypz9imbvL2hI8tvIy3i5s
-      cwZzFNjnTOt1dT5eC1JWHNOG+p0CUjzASDzHLx8IaV7+9N27MnM5bEL4S0EaIlOX
-      kH44CUctKI2YUAV0bdtvpX544zbj7Nryz9dcRAx41UKpQfnh2dfpKBGkZPUYQOcF
-      h327UxxhkdjWuX9UvyJG4EEmCy0C/fD8yWoHIsKiJ+V/XrN4JLWbbqphNvSJOBGF
-      ag/oHL8Cd2j6O0SQGCwHMyyiIKDwwWQQhA4NY28Eq/bq84+XHU2WSTKwONkyGxg=
-      =4Kps
-      -----END PGP SIGNATURE-----
+- version: 1.11.5
+  gpg-rsa-key-id: A1C052F8
+  gpg-signature: |
+    -----BEGIN PGP SIGNATURE-----
+    Version: GnuPG v2
+    iQEcBAABCAAGBQJX/P9pAAoJEFIKmZOhwFL4CZwH/jsxeNwEfdnMpYzyJePS+OpC
+    FTIFzMIKa1giJBjC2Em7JNOI0o8dzHziVF97bKJl35v15hLDaBYGIgZ2Ggv+7bqV
+    hJ0+EeJpeYG42a+76GS/Ioj9jOgzAflCoFTKRbxowGMezINnFWaCWSMjcWsei+Fo
+    ILGjUAE48wXZCvJk3oVW0Pi1tItehRRzeDJhTip6Ru74JnZqaufHbtPtT73qAF1h
+    vMGS717ShcAX1BXh8aUeg9MYnBHtmB9NOgjkJW2LRjFwwrTgkD8xQoUrK7USs3g+
+    55uQWWJU7yuy7UJoiJl6sCP0MG5ZU2si9MRlU0KIoNR8SJWIgKZCWpVFB2ippVE=
+    =3/BP
+    -----END PGP SIGNATURE-----

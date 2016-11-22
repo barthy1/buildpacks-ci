@@ -1,7 +1,5 @@
 ---
 go:
-- version: 1.5.3
-  sha256: 754e06dab1c31ab168fc9db9e32596734015ea9e24bc44cae7f237f417ce4efe
 - version: 1.5.4
   sha256: 002acabce7ddc140d0d55891f9d4fcfbdd806b9332fb8b110c91bc91afb0bc93
 - version: 1.6.2

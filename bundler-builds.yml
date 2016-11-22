@@ -1,4 +1,2 @@
 ---
-bundler:
-- version: 1.13.6
-  sha256: fafd22dfed658ca0603f321bdd168ed709d7c682e61273b55637716459f2d0f7
+bundler: []

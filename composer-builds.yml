@@ -1,4 +1,4 @@
 ---
 composer:
-- version: 1.2.2
-  sha256: c6ae4e099351233f5f82ade9738475eec6587aadf9ffe66fec4c350b329fbb32
+  - version: 1.2.2
+    sha256: c6ae4e099351233f5f82ade9738475eec6587aadf9ffe66fec4c350b329fbb32

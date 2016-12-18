@@ -4,6 +4,10 @@ resource_types:
     type: docker-image
     source:
       repository: cfcommunity/slack-notification-resource
+  - name: cron
+    type: docker-image
+    source:
+      repository: cftoolsmiths/cron-test
 resources:
   - name: verification-interval
     type: cron
@@ -56,11 +60,11 @@ jobs:
           trigger: true
         - get: buildpacks-ci
       - task: run-tests
-        file: buildpacks-ci/tasks/run-buildpack-checksums-specs.yml
+        file: buildpacks-ci/tasks/run-buildpack-checksums-specs/task.yml
         params:
           RUBYGEM_MIRROR: {{rubygem-mirror}}
       - task: build-site
-        file: buildpacks-ci/tasks/build-buildpack-checksums-site.yml
+        file: buildpacks-ci/tasks/build-buildpack-checksums-site/task.yml
         privileged: true
         params:
           RUBYGEM_MIRROR: {{rubygem-mirror}}
@@ -89,7 +93,7 @@ jobs:
           - get: binary-buildpack
           - get: php-buildpack
         - task: verify-buildpack-binaries
-          file: buildpacks-ci/tasks/verify-buildpack-binaries.yml
+          file: buildpacks-ci/tasks/verify-buildpack-binaries/task.yml
         on_failure:
           put: failure-alert
           params:

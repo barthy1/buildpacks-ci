@@ -4,7 +4,6 @@ ENV LANG="C.UTF-8"
 
 RUN apt-get update
 RUN apt-get -y install \
-  awscli \
   aufs-tools \
   curl \
   expect \
@@ -51,7 +50,10 @@ RUN chmod 755 /usr/bin/spiff
 RUN wget -O- https://github.com/github/hub/releases/download/v2.2.1/hub-linux-amd64-2.2.1.tar.gz | tar xz -C /usr/bin --strip-components=1 hub-linux-amd64-2.2.1/hub
 
 # Ensure Concourse Filter binary is present
-RUN wget 'https://github.com/pivotal-cf-experimental/concourse-filter/releases/download/v0.0.2/concourse-filter' && mv concourse-filter /usr/local/bin && chmod +x /usr/local/bin/concourse-filter
+RUN wget 'https://github.com/pivotal-cf-experimental/concourse-filter/releases/download/v0.0.3/concourse-filter' && mv concourse-filter /usr/local/bin && chmod +x /usr/local/bin/concourse-filter
+
+# AWS CLI
+RUN pip install awscli
 
 # when docker container starts, ensure login scripts run
 COPY build/*.sh /etc/profile.d/
@@ -59,10 +61,11 @@ COPY build/*.sh /etc/profile.d/
 # install buildpacks-ci Gemfile
 RUN gem install bundler
 COPY Gemfile /usr/local/Gemfile
+COPY Gemfile.lock /usr/local/Gemfile.lock
 RUN cd /usr/local && bundle install
 
 #install fly-cli
-RUN curl "https://buildpacks.ci.cf-app.com/api/v1/cli?arch=amd64&platform=linux" -sfL -o /usr/local/bin/fly
+RUN curl "https://concourse.buildpacks-gcp.ci.cf-app.com/api/v1/cli?arch=amd64&platform=linux" -sfL -o /usr/local/bin/fly
 RUN chmod +x /usr/local/bin/fly
 
 # git-hooks and git-secrets

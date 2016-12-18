@@ -1,0 +1,21 @@
+---
+platform: linux
+
+inputs:
+  - name: buildpacks-ci
+  - name: new-releases
+  - name: binary-builds
+outputs:
+  - name: binary-builds-artifacts
+run:
+  path: bash
+  args:
+    - -cl
+    - |
+      set -e
+      pushd buildpacks-ci
+        bundle exec ./tasks/queue-dependency-build/run.rb
+      popd
+      rsync -a binary-builds/ binary-builds-artifacts
+params:
+  DEPENDENCY:

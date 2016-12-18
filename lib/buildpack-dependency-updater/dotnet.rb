@@ -22,7 +22,7 @@ class BuildpackDependencyUpdater::Dotnet < BuildpackDependencyUpdater
     dependency_version = $2
     md5 = $3
 
-    url ="https://#{buildpack_dependencies_host_domain}/concourse-binaries/#{dependency}/#{dependency_filename}"
+    url ="https://#{buildpack_dependencies_host_domain}/dependencies/#{dependency}/#{dependency_filename}"
 
     [dependency_version, url, md5]
   end
@@ -43,18 +43,9 @@ class BuildpackDependencyUpdater::Dotnet < BuildpackDependencyUpdater
   def perform_dependency_specific_changes
     framework_version = get_framework_version
 
-    update_default_versions unless Gem::Version.new(framework_version).prerelease?
+    perform_default_versions_update unless Gem::Version.new(framework_version).prerelease?
 
     update_dotnet_versions(framework_version)
-  end
-
-  def update_default_versions
-    buildpack_manifest["default_versions"].delete_if { |dep| dep["name"] == dependency }
-    default_dependency_hash = {
-      "name" => dependency,
-      "version" => dependency_version
-    }
-    buildpack_manifest["default_versions"] << default_dependency_hash
   end
 
   def update_dotnet_versions(framework_version)

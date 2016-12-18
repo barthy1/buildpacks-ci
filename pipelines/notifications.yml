@@ -1,13 +1,13 @@
 ---
 resource_types:
-- name: email-sender
-  type: docker-image
-  source:
-    repository: pcfseceng/email-resource
-- name: slack-notification
-  type: docker-image
-  source:
-    repository: cfcommunity/slack-notification-resource
+  - name: email-sender
+    type: docker-image
+    source:
+      repository: pcfseceng/email-resource
+  - name: cron
+    type: docker-image
+    source:
+      repository: cftoolsmiths/cron-test
 
 resources:
   - name: monday-funday
@@ -53,7 +53,7 @@ resources:
     source:
       smtp:
         host: email-smtp.us-east-1.amazonaws.com
-        port: "25"
+        port: "2587"
         username: {{cve-amazon-ses-smtp-username}}
         password: {{cve-amazon-ses-smtp-password}}
       from: cf-buildpacks-eng@pivotal.io
@@ -70,7 +70,7 @@ jobs:
         - get: check-interval
           trigger: true
       - task: check-for-new-dependency-releases
-        file: buildpacks-ci/tasks/check-for-new-buildpack-dependency-releases.yml
+        file: buildpacks-ci/tasks/check-for-new-buildpack-dependency-releases/task.yml
         params:
           SLACK_CHANNEL: {{dependency-notifier-slack-channel}}
           SLACK_WEBHOOK: {{dependency-notifier-slack-webhook}}
@@ -91,13 +91,13 @@ jobs:
         trigger: true
       - get: buildpacks-ci
       - task: create-latest-upstream-changes-story
-        file: buildpacks-ci/tasks/create-latest-upstream-changes-story.yml
+        file: buildpacks-ci/tasks/create-latest-upstream-changes-story/task.yml
         params:
           TRACKER_PROJECT_ID: {{cf-buildpacks-public-tracker-id}}
           TRACKER_API_TOKEN: {{pivotal-tracker-api-token}}
           TRACKER_REQUESTER_ID: {{cf-buildpacks-requester-id}}
       - task: create-open-pull-requests-story
-        file: buildpacks-ci/tasks/create-open-pull-requests-story.yml
+        file: buildpacks-ci/tasks/create-open-pull-requests-story/task.yml
         params:
           TRACKER_PROJECT_ID: {{cf-buildpacks-public-tracker-id}}
           TRACKER_API_TOKEN: {{pivotal-tracker-api-token}}
@@ -105,7 +105,7 @@ jobs:
           GITHUB_USERNAME: {{github-username}}
           GITHUB_PASSWORD: {{github-password}}
       - task: create-open-issues-story
-        file: buildpacks-ci/tasks/create-open-issues-story.yml
+        file: buildpacks-ci/tasks/create-open-issues-story/task.yml
         params:
           TRACKER_PROJECT_ID: {{cf-buildpacks-public-tracker-id}}
           TRACKER_API_TOKEN: {{pivotal-tracker-api-token}}
@@ -124,7 +124,7 @@ jobs:
         - get: check-interval
           trigger: true
       - task: check-for-new-rootfs-cves
-        file: buildpacks-ci/tasks/check-for-new-rootfs-cves.yml
+        file: buildpacks-ci/tasks/check-for-new-rootfs-cves/task.yml
         params:
           SLACK_CHANNEL: {{dependency-notifier-slack-channel}}
           SLACK_WEBHOOK: {{dependency-notifier-slack-webhook}}
@@ -134,6 +134,7 @@ jobs:
           TRACKER_API_TOKEN: {{pivotal-tracker-api-token}}
           TRACKER_REQUESTER_ID: {{cf-buildpacks-requester-id}}
           EMAIL_PREPARER_DIR: ../cves-email
+          STACK: stacks
       - put: new-cves
         params:
           repository: output-new-cves

@@ -14,6 +14,8 @@ gem 'tracker_api'
 gem 'bosh_cli'
 gem 'bosh_cli_plugin_micro'
 gem 'rake'
+gem 'diffy'
+gem 'open_uri_redirections'
 
 group :development do
   gem 'version_sorter'

@@ -42,7 +42,7 @@ describe BuildpackDependencyUpdater do
                 - cflinuxfs2
             - name: godep
               version: v64
-              uri: https://buildpacks.cloudfoundry.org/concourse-binaries/godep/godep-v64-linux-x64.tgz
+              uri: https://buildpacks.cloudfoundry.org/dependencies/godep/godep-v64-linux-x64.tgz
               md5: f75da3a0c5ec08514ec2700c2a6d1187
               cf_stacks:
                 - cflinuxfs2
@@ -65,7 +65,7 @@ describe BuildpackDependencyUpdater do
 
         dependency_in_manifest = manifest["dependencies"].find{|dep| dep["name"] == dependency}
         expect(dependency_in_manifest["version"]).to eq(new_version)
-        expect(dependency_in_manifest["uri"]).to eq("https://buildpacks.cloudfoundry.org/concourse-binaries/godep/godep-#{new_version}-linux-x64.tgz")
+        expect(dependency_in_manifest["uri"]).to eq("https://buildpacks.cloudfoundry.org/dependencies/godep/godep-#{new_version}-linux-x64.tgz")
         expect(dependency_in_manifest["md5"]).to eq(new_md5)
       end
 
@@ -109,7 +109,7 @@ describe BuildpackDependencyUpdater do
           dependencies:
             - name: composer
               version: 1.0.3
-              uri: https://buildpacks.cloudfoundry.org/php/binaries/trusty/composer/1.1.0/composer.phar
+              uri: https://buildpacks.cloudfoundry.org/dependencies/php/binaries/trusty/composer/1.1.0/composer.phar
               cf_stacks:
                 - cflinuxfs2
               md5: aff20443a474112755ff0ef65c4873e5
@@ -129,7 +129,7 @@ describe BuildpackDependencyUpdater do
 
         dependency_in_manifest = manifest["dependencies"].find{|dep| dep["name"] == dependency}
         expect(dependency_in_manifest["version"]).to eq(new_version)
-        expect(dependency_in_manifest["uri"]).to eq("https://buildpacks.cloudfoundry.org/php/binaries/trusty/composer/1.1.0/composer.phar")
+        expect(dependency_in_manifest["uri"]).to eq("https://buildpacks.cloudfoundry.org/dependencies/php/binaries/trusty/composer/1.1.0/composer.phar")
         expect(dependency_in_manifest["md5"]).to eq("05d30d20be1c94c9edc02756420a7d10")
       end
 
@@ -137,11 +137,12 @@ describe BuildpackDependencyUpdater do
         subject.run!
         manifest = YAML.load_file(manifest_file)
 
-        default_in_manifest = manifest["default_versions"].find{|dep| dep["name"] == dependency && dep["version"] == '1.0.3'}
-        expect(default_in_manifest).to eq(nil)
-
+        old_default_in_manifest = manifest["default_versions"].find{|dep| dep["name"] == dependency && dep["version"] == '1.0.3'}
         default_in_manifest = manifest["default_versions"].find{|dep| dep["name"] == dependency && dep["version"] == new_version}
-        expect(default_in_manifest["version"]).to eq(new_version)
+        current_default_version = default_in_manifest["version"]
+
+        expect(old_default_in_manifest).to eq(nil)
+        expect(current_default_version).to eq(new_version)
       end
 
       it 'records which versions were removed' do
@@ -168,7 +169,7 @@ describe BuildpackDependencyUpdater do
           dependencies:
             - name: glide
               version: 0.9.3
-              uri: https://buildpacks.cloudfoundry.org/concourse-binaries/glide/glide-0.9.3-linux-x64.tgz
+              uri: https://buildpacks.cloudfoundry.org/dependencies/glide/glide-0.9.3-linux-x64.tgz
               cf_stacks:
                 - cflinuxfs2
               md5: aff20443a474112755ff0ef65c4873e5
@@ -190,7 +191,7 @@ describe BuildpackDependencyUpdater do
 
         dependency_in_manifest = manifest["dependencies"].find{|dep| dep["name"] == dependency}
         expect(dependency_in_manifest["version"]).to eq(new_version)
-        expect(dependency_in_manifest["uri"]).to eq("https://buildpacks.cloudfoundry.org/concourse-binaries/glide/glide-0.10.2-linux-x64.tgz")
+        expect(dependency_in_manifest["uri"]).to eq("https://buildpacks.cloudfoundry.org/dependencies/glide/glide-0.10.2-linux-x64.tgz")
         expect(dependency_in_manifest["md5"]).to eq("18bec8f65810786c846d8b21fe73064f")
       end
 
@@ -207,16 +208,17 @@ describe BuildpackDependencyUpdater do
         buildpack_manifest_contents = <<~MANIFEST
           ---
           language: staticfile
-
-          url_to_dependency_map:
-            - match: nginx.tgz
-              name: nginx
+          default_versions:
+            - name: nginx
               version: 1.11.1
-
+          url_to_dependency_map:
+            - match: nginx-(\d+\.\d+\.\d+)
+              name: nginx
+              version: $1
           dependencies:
             - name: nginx
               version: 1.11.1
-              uri: https://buildpacks.cloudfoundry.org/concourse-binaries/nginx/nginx-1.11.1-linux-x64.tgz
+              uri: https://buildpacks.cloudfoundry.org/dependencies/nginx/nginx-1.11.1-linux-x64.tgz
               cf_stacks:
                 - cflinuxfs2
               md5: 7d28497395b62221f3380e82f89cd197
@@ -236,13 +238,25 @@ describe BuildpackDependencyUpdater do
         it "updates the specified buildpack manifest dependency with the specified version" do
           subject.run!
           manifest = YAML.load_file(manifest_file)
-          version_hash = {"match"=>"nginx.tgz", "name"=>dependency, "version"=>new_version}
+          version_hash = {"match"=>"nginx-(d+.d+.d+)", "name"=>dependency, "version"=>"$1"}
           expect(manifest["url_to_dependency_map"]).to include(version_hash)
 
           dependency_in_manifest = manifest["dependencies"].find{|dep| dep["name"] == dependency && dep["version"] == new_version}
           expect(dependency_in_manifest["version"]).to eq(new_version)
-          expect(dependency_in_manifest["uri"]).to eq("https://buildpacks.cloudfoundry.org/concourse-binaries/nginx/nginx-1.11.2-linux-x64.tgz")
+          expect(dependency_in_manifest["uri"]).to eq("https://buildpacks.cloudfoundry.org/dependencies/nginx/nginx-1.11.2-linux-x64.tgz")
           expect(dependency_in_manifest["md5"]).to eq("18bec8f65810786c846d8b21fe73064f")
+        end
+
+        it "updates the staticfile buildpack manifest default_versions section with the specified version for nginx" do
+          subject.run!
+          manifest = YAML.load_file(manifest_file)
+
+          old_default_in_manifest = manifest["default_versions"].find{|dep| dep["name"] == dependency && dep["version"] == '1.11.1'}
+          default_in_manifest = manifest["default_versions"].find{|dep| dep["name"] == dependency && dep["version"] == new_version}
+          current_default_version = default_in_manifest["version"]
+
+          expect(old_default_in_manifest).to eq(nil)
+          expect(current_default_version).to eq(new_version)
         end
 
         it 'records which versions were removed' do
@@ -257,7 +271,7 @@ describe BuildpackDependencyUpdater do
         it "does not update the specified buildpack manifest dependency with the specified version" do
           subject.run!
           manifest = YAML.load_file(manifest_file)
-          version_hash = {"match"=>"nginx.tgz", "name"=>dependency, "version"=>"1.11.1"}
+          version_hash = {"match"=>"nginx-(d+.d+.d+)", "name"=>dependency, "version"=>"$1"}
           expect(manifest["url_to_dependency_map"]).to include(version_hash)
 
           new_dependency_in_manifest = manifest["dependencies"].find{|dep| dep["name"] == dependency && dep["version"] == new_version}
@@ -287,13 +301,13 @@ describe BuildpackDependencyUpdater do
           dependencies:
             - name: nginx
               version: 1.10.1
-              uri: https://buildpacks.cloudfoundry.org/concourse-binaries/nginx/nginx-1.10.1-linux-x64.tgz
+              uri: https://buildpacks.cloudfoundry.org/dependencies/nginx/nginx-1.10.1-linux-x64.tgz
               cf_stacks:
                 - cflinuxfs2
               md5: 7d28497395b62221f3380e82f89cd197
             - name: nginx
               version: 1.11.1
-              uri: https://buildpacks.cloudfoundry.org/concourse-binaries/nginx/nginx-1.11.1-linux-x64.tgz
+              uri: https://buildpacks.cloudfoundry.org/dependencies/nginx/nginx-1.11.1-linux-x64.tgz
               cf_stacks:
                 - cflinuxfs2
               md5: 7d28497395b62221f3380e82f89cd197
@@ -313,12 +327,12 @@ describe BuildpackDependencyUpdater do
 
         dependency_in_manifest = manifest["dependencies"].find{|dep| dep["name"] == dependency && dep["version"] == new_version}
         expect(dependency_in_manifest["version"]).to eq(new_version)
-        expect(dependency_in_manifest["uri"]).to eq("https://buildpacks.cloudfoundry.org/concourse-binaries/nginx/nginx-1.11.2-linux-x64.tgz")
+        expect(dependency_in_manifest["uri"]).to eq("https://buildpacks.cloudfoundry.org/dependencies/nginx/nginx-1.11.2-linux-x64.tgz")
         expect(dependency_in_manifest["md5"]).to eq("18bec8f65810786c846d8b21fe73064f")
 
         dependency_in_manifest = manifest["dependencies"].find{|dep| dep["name"] == dependency && dep["version"] != new_version}
         expect(dependency_in_manifest["version"]).to eq("1.10.1")
-        expect(dependency_in_manifest["uri"]).to eq("https://buildpacks.cloudfoundry.org/concourse-binaries/nginx/nginx-1.10.1-linux-x64.tgz")
+        expect(dependency_in_manifest["uri"]).to eq("https://buildpacks.cloudfoundry.org/dependencies/nginx/nginx-1.10.1-linux-x64.tgz")
         expect(dependency_in_manifest["md5"]).to eq("7d28497395b62221f3380e82f89cd197")
       end
 
@@ -326,11 +340,12 @@ describe BuildpackDependencyUpdater do
         subject.run!
         manifest = YAML.load_file(manifest_file)
 
-        default_in_manifest = manifest["default_versions"].find{|dep| dep["name"] == dependency && dep["version"] == '1.11.1'}
-        expect(default_in_manifest).to eq(nil)
-
+        old_default_in_manifest = manifest["default_versions"].find{|dep| dep["name"] == dependency && dep["version"] == '1.11.1'}
         default_in_manifest = manifest["default_versions"].find{|dep| dep["name"] == dependency && dep["version"] == new_version}
-        expect(default_in_manifest["version"]).to eq(new_version)
+        current_default_version = default_in_manifest["version"]
+
+        expect(old_default_in_manifest).to eq(nil)
+        expect(current_default_version).to eq(new_version)
       end
 
       it 'records which versions were removed' do

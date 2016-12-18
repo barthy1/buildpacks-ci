@@ -7,18 +7,12 @@ class BuildpackDependencyUpdater::Composer < BuildpackDependencyUpdater
 
     dependency_version = git_commit_message[/filename:\s+binary-builder\/composer-([\d\.]*).phar/, 1]
     md5 = git_commit_message[/md5:\s+(\w+)/, 1]
-    url ="https://#{buildpack_dependencies_host_domain}/php/binaries/trusty/composer/#{dependency_version}/composer.phar"
+    url ="https://#{buildpack_dependencies_host_domain}/dependencies/php/binaries/trusty/composer/#{dependency_version}/composer.phar"
 
     [dependency_version, url, md5]
   end
 
   def perform_dependency_specific_changes
-    buildpack_manifest["default_versions"].delete_if { |dep| dep["name"] == dependency }
-    default_dependency_hash = {
-      "name" => dependency,
-      "version" => dependency_version
-    }
-    buildpack_manifest["default_versions"] << default_dependency_hash
+    perform_default_versions_update
   end
-
 end

@@ -79,7 +79,7 @@ class BuildpackDependencyUpdater
     dependency_version = $2
     md5 = $3
 
-    url ="https://#{buildpack_dependencies_host_domain}/concourse-binaries/#{dependency}/#{dependency_filename}"
+    url ="https://#{buildpack_dependencies_host_domain}/dependencies/#{dependency}/#{dependency_filename}"
 
     [dependency_version, url, md5]
   end
@@ -110,5 +110,14 @@ class BuildpackDependencyUpdater
   end
 
   def perform_dependency_specific_changes; end
+
+  def perform_default_versions_update
+    buildpack_manifest["default_versions"].delete_if { |dep| dep["name"] == dependency }
+    default_dependency_hash = {
+      "name" => dependency,
+      "version" => dependency_version
+    }
+    buildpack_manifest["default_versions"] << default_dependency_hash
+  end
 end
 

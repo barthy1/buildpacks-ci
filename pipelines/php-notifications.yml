@@ -1,9 +1,13 @@
 ---
 resource_types:
-- name: new_version_resource
-  type: docker-image
-  source:
-    repository: cfbuildpacks/new_version_resource
+  - name: new_version_resource
+    type: docker-image
+    source:
+      repository: cfbuildpacks/new_version_resource
+  - name: cron
+    type: docker-image
+    source:
+      repository: cftoolsmiths/cron-test
 
 resources:
   - name: month-start
@@ -153,7 +157,7 @@ resources:
     type: new_version_resource
     source:
       url: http://www.ioncube.com/loaders.php
-      csspath: tr:contains("Linux (64 bits)") td:nth-of-type(6)
+      csspath: tr:contains("Linux (64 bits)") td:nth-of-type(5)
   - name: librdkafka
     type: new_version_resource
     source:
@@ -237,7 +241,7 @@ jobs:
         - get: suhosin5
         - get: buildpacks-ci
       - task: check-for-latest-php-module-versions
-        file: buildpacks-ci/tasks/check-for-latest-php-module-versions.yml
+        file: buildpacks-ci/tasks/check-for-latest-php-module-versions/task.yml
         params:
             TRACKER_PROJECT_ID: {{cf-buildpacks-public-tracker-id}}
             TRACKER_API_TOKEN: {{pivotal-tracker-api-token}}

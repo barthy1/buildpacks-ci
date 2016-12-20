@@ -14,6 +14,7 @@ run:
     - |
       set -e
       pushd buildpacks-ci
+        bundle install
         bundle exec tasks/update-dependency-in-buildpack/run.rb
       popd
       rsync -a buildpack/ buildpack-artifacts

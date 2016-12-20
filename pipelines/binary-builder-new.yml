@@ -25,6 +25,11 @@ resources:
       branch: binary-builds
       private_key: {{buildpacks-ci-private-key}}
       uri: {{buildpacks-ci-git-uri}}
+      git_config:
+        - name: user.email
+          value: {{name}}
+        - name: user.name
+          value: {{email}}
 # php php7 dotnet
 <% %w(bower go bundler composer  glide godep httpd jruby  python node nginx ruby).each do |dep| %>
   - name: <%= dep %>-builds
@@ -34,6 +39,11 @@ resources:
       private_key: {{buildpacks-ci-private-key}}
       uri: {{buildpacks-ci-git-uri}}
       paths: [ <%= dep %>-builds.yml ]
+      git_config:
+        - name: user.email
+          value: {{name}}
+        - name: user.name
+          value: {{email}}
 
   - name: <%= dep %>-built-output
     type: git
@@ -42,6 +52,11 @@ resources:
       private_key: {{buildpacks-ci-private-key}}
       uri: {{buildpacks-ci-git-uri}}
       paths: [ <%= dep %>-built.yml ]
+      git_config:
+        - name: user.email
+          value: {{name}}
+        - name: user.name
+          value: {{email}}
 <% end %>
 # dotnet
 <% %w(bower composer  glide godep nginx node).each do |auto_dep| %>
@@ -53,8 +68,8 @@ resources:
       uri: {{buildpacks-ci-git-uri}}
       paths: [ <%= auto_dep %>-builds.yml ]
 <% end %>
-
-<% %w(bower composer dotnet glide godep nginx node).each do |auto_new| %>
+#dotnet
+<% %w(bower composer  glide godep nginx node).each do |auto_new| %>
   - name: <%= auto_new %>-new-releases
     type: git
     source:
@@ -136,23 +151,28 @@ jobs: ##########################################################################
     plan:
       - aggregate:
         - get: buildpacks-ci
+          tags: [ppc64le]
         - get: buildpacks-ci-image
+          tags: [ppc64le]
         - get: docker-cflinuxfs2-rootfs
+          tags: [ppc64le]
           trigger: true
         - get: binary-builder
+          tags: [ppc64le]
           trigger: true
       - do:
       # php5 php7 php5_with_oracle php7_with_oracle dotnet
         <% integration_spec_names = %w(bundler glide go godep httpd jruby nginx nodejs  python ruby url_output yaml_flag ) %>
-        - task: all-expected-integration-specs-will-run
-          file: buildpacks-ci/tasks/check-for-binary-builder-integration-spec-presence/task-power.yml
-          image: buildpacks-ci-image
-          privileged: true
-          params:
-            SPEC_NAMES: <%= integration_spec_names.join(',') %>
+#        - task: all-expected-integration-specs-will-run
+#          file: buildpacks-ci/tasks/check-for-binary-builder-integration-spec-presence/task-power.yml
+#          image: buildpacks-ci-image
+#          privileged: true
+#          params:
+#            SPEC_NAMES: <%= integration_spec_names.join(',') %>
         - task: all-unit-tests
           image: docker-cflinuxfs2-rootfs
           privileged: true
+          tags: [ppc64le]
           file: buildpacks-ci/tasks/run-binary-builder-unit-specs/task-power.yml
           params:
             RUBYGEM_MIRROR: {{rubygem-mirror}}
@@ -160,11 +180,14 @@ jobs: ##########################################################################
           <% integration_spec_names.each do |spec_name| %>
           - task: integration-<%= spec_name %>
             image: docker-cflinuxfs2-rootfs
+            tags: [ppc64le]
             file: buildpacks-ci/tasks/run-binary-builder-integration-specs/task-power.yml
             params:
               SPEC_TO_RUN: <%= spec_name %>
               RUBYGEM_MIRROR: {{rubygem-mirror}}
               RUN_ORACLE_PHP_TESTS: <%= run_oracle_php_tests %>
+              BINARY_BUILDER_PLATFORM: {{binary-builder-platform}}
+              BINARY_BUILDER_OS_NAME: {{binary-builder-os-name}}
             privileged: true
           <% end %>
 # php php7
@@ -172,20 +195,26 @@ jobs: ##########################################################################
   - name: build-<%= dependency %>
     serial: true
     public: true
-    disable_manual_trigger: true # instead, trigger jobs by pushing yaml to buildpacks-ci:binary-builds
+   # disable_manual_trigger: true # instead, trigger jobs by pushing yaml to buildpacks-ci:binary-builds
     plan:
       - aggregate:
         - get: builds-yaml
           resource: <%= dependency %>-builds
           trigger: true
+          tags: [ppc64le]
         - get: binary-builder
+          tags: [ppc64le]
           passed: [binary-builder-specs]
         - get: docker-cflinuxfs2-rootfs
+          tags: [ppc64le]
         - get: buildpacks-ci
+          tags: [ppc64le]
         - get: built-yaml
+          tags: [ppc64le]
           resource: <%= dependency %>-built-output
       - do:
         - task: build-binary
+          tags: [ppc64le]
           file: buildpacks-ci/tasks/build-binary/task-power.yml
           image: docker-cflinuxfs2-rootfs
           params:
@@ -197,6 +226,7 @@ jobs: ##########################################################################
             BINARY_BUILDER_OS_NAME: {{binary-builder-os-name}}
           privileged: true
         - task: push-binary
+          tags: [ppc64le]
           file: buildpacks-ci/tasks/push-binary/task.yml
           image: docker-cflinuxfs2-rootfs
           params:
@@ -208,6 +238,7 @@ jobs: ##########################################################################
             AWS_DEFAULT_REGION: us-east-1
           privileged: true
         - put: builds-out
+          tags: [ppc64le]
           params:
             repository: builds-yaml-artifacts
             rebase: true
@@ -220,19 +251,25 @@ jobs: ##########################################################################
     plan:
       - aggregate:
         - get: buildpacks-ci
+          tags: [ppc64le]
         - get: docker-cflinuxfs2-rootfs
+          tags: [ppc64le]
         - get: new-releases
+          tags: [ppc64le]
           resource: <%= dependency %>-new-releases
           trigger: true
         - get: binary-builds
+          tags: [ppc64le]
           resource: <%= dependency %>-builds
       - task: queue-binary-build
         image: docker-cflinuxfs2-rootfs
+        tags: [ppc64le]
         file: buildpacks-ci/tasks/queue-dependency-build/task.yml
         privileged: true
         params:
           DEPENDENCY: <%= dependency %>
       - put: <%= dependency %>-builds
+        tags: [ppc64le]
         params:
           repository: binary-builds-artifacts
           rebase: true
@@ -243,18 +280,24 @@ jobs: ##########################################################################
     plan:
       - aggregate:
         - get: built-yaml
+          tags: [ppc64le]
           resource: <%= dependency %>-built-output
         - get: builds-yaml
+          tags: [ppc64le]
           resource: <%= dependency %>-builds-in
           version: every
           trigger: true
         - get: docker-cflinuxfs2-rootfs
+          tags: [ppc64le]
         - get: binary-builder
+          tags: [ppc64le]
           passed: [binary-builder-specs]
         - get: buildpacks-ci
+          tags: [ppc64le]
       - do:
         - task: build-binary
           image: docker-cflinuxfs2-rootfs
+          tags: [ppc64le]
           file: buildpacks-ci/tasks/build-binary/task-power.yml
           params:
             GIT_SSH_KEY: {{buildpacks-ci-private-key}}
@@ -265,6 +308,7 @@ jobs: ##########################################################################
           privileged: true
         - task: push-binary
           image: docker-cflinuxfs2-rootfs
+          tags: [ppc64le]
           file: buildpacks-ci/tasks/push-binary/task-power.yml
           params:
             BINARY_NAME: <%= dependency %>
@@ -274,6 +318,7 @@ jobs: ##########################################################################
             AWS_DEFAULT_REGION: us-east-1
           privileged: true
         - put: builds-out
+          tags: [ppc64le]
           resource: <%= dependency %>-built-output
           params:
             repository: builds-yaml-artifacts
@@ -289,30 +334,39 @@ jobs: ##########################################################################
       - do:
         - aggregate:
           - get: buildpacks-ci
+            tags: [ppc64le]
           - get: buildpack
+            tags: [ppc64le]
             resource: <%= buildpack %>-buildpack
           - get: docker-cflinuxfs2-rootfs
+            tags: [ppc64le]
+          - get: buildpacks-ci-image
+            tags: [ppc64le]
           - get: built-out
+            tags: [ppc64le]
             resource: <%= dependency %>-built-output
             passed: [ build-<%= dependency %> ]
             version: every
             trigger: true
         - task: update-dependency-in-manifests
+          tags: [ppc64le]
           file: buildpacks-ci/tasks/update-dependency-in-buildpack/task.yml
-          image: docker-cflinuxfs2-rootfs
+          image: buildpacks-ci-image
           privileged: true
           params:
             BUILDPACK_NAME: <%= buildpack %>
             DEPENDENCY: <%= dependency %>
             BUILDPACK_DEPENDENCIES_HOST_DOMAIN: {{buildpack-dependencies-host-domain}}
         - put: cf-environments
+          tags: [ppc64le]
           resource: cf-edge-environments
           params:
             acquire: true
         - do:
           - task: rspec
+            tags: [ppc64le]
             file: buildpacks-ci/tasks/run-buildpack-specs-before-auto-update/task.yml
-            image: docker-cflinuxfs2-rootfs
+            image: buildpacks-ci-image
             privileged: true
             params:
               STACKS: cflinuxfs2
@@ -320,12 +374,16 @@ jobs: ##########################################################################
               RUBYGEM_MIRROR: {{rubygem-mirror}}
               DEPLOYMENT_NAME: {{deployment_name}}
               DOMAIN_NAME: {{domain-name}}
+              BINARY_BUILDER_PLATFORM: {{binary-builder-platform}}
+              BINARY_BUILDER_OS_NAME: {{binary-builder-os-name}}
           - put: <%= buildpack %>-buildpack
+            tags: [ppc64le]
             params:
               repository: buildpack-artifacts
               rebase: true
           ensure:
             put: cf-edge-environments
+            tags: [ppc64le]
             params:
               release: cf-environments
   <% end %>

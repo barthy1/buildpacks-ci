@@ -19,3 +19,6 @@ run:
     - buildpacks-ci/tasks/build-binary/run.rb
 params:
   RUBYGEM_MIRROR:
+  BINARY_BUILDER_PLATFORM:
+  BINARY_BUILDER_OS_NAME:
+

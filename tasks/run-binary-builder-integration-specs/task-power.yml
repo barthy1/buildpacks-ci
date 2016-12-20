@@ -9,5 +9,8 @@ params:
   RUBYGEM_MIRROR:
   AWS_ACCESS_KEY:
   AWS_SECRET_ACCESS_KEY:
+  EXCLUDE_ON_PPC64LE: false
+  BINARY_BUILDER_PLATFORM:
+  BINARY_BUILDER_OS_NAME:
 run:
   path: buildpacks-ci/tasks/run-binary-builder-integration-specs/run.sh

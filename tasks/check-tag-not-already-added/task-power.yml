@@ -1,0 +1,7 @@
+---
+platform: linux
+inputs:
+  - name: buildpacks-ci
+  - name: buildpack
+run:
+  path: buildpacks-ci/tasks/check-tag-not-already-added/run.sh

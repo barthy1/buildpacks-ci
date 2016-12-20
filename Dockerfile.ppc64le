@@ -4,7 +4,6 @@ ENV LANG="C.UTF-8"
 
 RUN apt-get upgrade && apt-get update
 RUN apt-get -y install \
-  awscli \
   aufs-tools \
   curl \
   expect \
@@ -28,13 +27,11 @@ RUN wget https://master.dockerproject.org/linux/ppc64le/dockerd \
           https://master.dockerproject.org/linux/ppc64le/docker-proxy \
           https://master.dockerproject.org/linux/ppc64le/docker-runc \
           https://master.dockerproject.org/linux/ppc64le/docker \
+          https://master.dockerproject.org/linux/ppc64le/docker-containerd-ctr \
+          https://master.dockerproject.org/linux/ppc64le/docker-init \
           https://master.dockerproject.org/linux/ppc64le/docker-containerd \
           https://master.dockerproject.org/linux/ppc64le/docker-containerd-shim -P /usr/local/bin/ \
     && chmod +x /usr/local/bin/*
-
-RUN git config --global user.email "cf-buildpacks-eng@pivotal.io"
-RUN git config --global user.name "CF Buildpacks Team CI Server"
-RUN git config --global core.pager cat
 
 #RUN wget -q https://releases.hashicorp.com/vagrant/1.8.1/vagrant_1.8.1_x86_64.deb \
 #  && dpkg -i vagrant_1.8.1_x86_64.deb \
@@ -89,3 +86,7 @@ RUN cd /usr/local && curl -L http://ftp.unicamp.br/pub/ppc64el/ubuntu/14_04/clou
 ENV GOPATH=/go
 ENV PATH=$PATH:/go/bin
 RUN mkdir -p $GOPATH/src && cd $GOPATH/src && go get github.com/tools/godep && git clone https://github.com/git-hooks/git-hooks && cd git-hooks && make get && go install
+
+RUN git config --global user.email "cf-buildpacks-eng@pivotal.io"
+RUN git config --global user.name "CF Buildpacks Team CI Server"
+RUN git config --global core.pager cat

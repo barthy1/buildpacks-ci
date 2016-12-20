@@ -1,30 +1,4 @@
 ---
-#resource_types:
-#  - name: slack-notification
-#    type: docker-image
-#    source:
-#      repository: cfcommunity/slack-notification-resource
-#  - name: pivnet
-#    type: docker-image
-#    source:
-#      repository: pivotalcf/pivnet-resource
-#      tag: latest-final
-
-#resource_types:
-#- name: pool
-#  type: docker-image
-#  source:
-#    repository: 140.211.168.97:5000/pool-resource
-#    insecure_registries: ["140.211.168.97:5000"]
-#    username: {{username}}
-#    password: {{password}}
-#- name: s3
-#  type: docker-image
-#  source:
-#    repository: 140.211.168.97:5000/s3-resource
-#    insecure_registries: ["140.211.168.97:5000"]
-#    username: {{username}}
-#    password: {{password}}
 
 resources: ############################################################################################################
 
@@ -157,31 +131,7 @@ resources: #####################################################################
       access_key_id: {{pivotal-buildpacks-s3-access-key}}
       secret_access_key: {{pivotal-buildpacks-s3-secret-key}}
 
-  ## Resource Pools ##
-
-  - name: cf-edge-gcp-environments
-    type: pool
-    source:
-      branch: resource-pools
-      pool: cf-edge-gcp-environments
-      private_key: {{buildpacks-ci-private-key}}
-      uri: {{buildpacks-ci-git-uri}}
-  - name: cf-lts-gcp-environments
-    type: pool
-    source:
-      branch: resource-pools
-      pool: cf-lts-gcp-environments
-      private_key: {{buildpacks-ci-private-key}}
-      uri: {{buildpacks-ci-git-uri}}
-
-  - name: cf-edge-aws-environments
-    type: pool
-    source:
-      branch: resource-pools
-      pool: cf-edge-environments
-      private_key: {{buildpacks-ci-private-key}}
-      uri: {{buildpacks-ci-git-uri}}
-  - name: cf-lts-aws-environments
+  - name: cf-lts-environments
     type: pool
     source:
       branch: resource-pools
@@ -262,50 +212,7 @@ jobs: ##########################################################################
             channel: {{concourse-job-failure-notifications-slack-channel}}
             username: concourse
             icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
-  - name: specs-edge-master
-    serial: true
-    public: true
-    plan:
-      - put: cf-environments
-        resource: cf-edge-aws-environments
-        params:
-          acquire: true
-      - aggregate:
-        - get: buildpacks-ci
-        - get: buildpack
-          passed: [ "detect-new-version-and-upload-artifacts" ]
-          resource: buildpack-master
-          trigger: true
-        - get: pivotal-buildpacks
-          resource: pivotal-buildpack
-          passed: [ "detect-new-version-and-upload-artifacts" ]
-          trigger: true
-        - get: pivotal-buildpacks-cached
-          resource: pivotal-buildpack-cached
-          passed: [ "detect-new-version-and-upload-artifacts" ]
-          trigger: true
-      - do:
-        - task: rspec
-          file: buildpacks-ci/tasks/run-buildpack-specs/task.yml
-          params:
-            STACKS: cflinuxfs2
-            COMPOSER_GITHUB_OAUTH_TOKEN: {{composer-github-oauth-token}}
-            CF_PASSWORD: {{ci-cf-password}}
-            BOSH_LITE_DOMAIN_NAME: {{bosh-lite-domain-name}}
-            RUBYGEM_MIRROR: {{rubygem-mirror}}
-          privileged: true
-          ensure:
-            put: cf-edge-aws-environments
-            params:
-              release: cf-environments
-        on_failure:
-          put: failure-alert
-          params:
-            text: "$BUILD_PIPELINE_NAME $BUILD_JOB_NAME job on Concourse failed! \n Check: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME"
-            channel: {{concourse-job-failure-notifications-slack-channel}}
-            username: concourse
-            icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
-            to: /experimental-buildpacks/<%= language %>/
+
 #  - name: specs-edge-master
 #    serial: true
 #    public: true
@@ -348,7 +255,7 @@ jobs: ##########################################################################
     public: true
     plan:
       - put: cf-environments
-        resource: cf-lts-aws-environments
+        resource: cf-lts-environments
         params:
           acquire: true
       - aggregate:
@@ -377,12 +284,12 @@ jobs: ##########################################################################
             CF_PASSWORD: {{ci-cf-password}}
             BOSH_LITE_DOMAIN_NAME: {{bosh-lite-domain-name}}
             DOMAIN_NAME: 'xip.io'
-            DEPLOYMENT_NAME: '140.211.168.100'
+            DEPLOYMENT_NAME: '140.211.168.170'
             RUBYGEM_MIRROR: {{rubygem-mirror}}
           privileged: true
 
           ensure:
-            put: cf-lts-aws-environments
+            put: cf-lts-environments
             params:
               release: cf-environments
 
@@ -519,45 +426,45 @@ jobs: ##########################################################################
             - buildpack-artifacts/*_buildpack-cached-v*.zip
             - buildpack-artifacts/*_buildpack-cached-v*.zip.SHA256SUM.txt
 <% unless language == "multi" %>
-  - name: write-pivnet-metadata
-    serial: true
-    public: true
-    plan:
-      - aggregate:
-        - get: buildpacks-ci
-        - get: pivnet-buildpack-metadata
-        - get: pivotal-buildpacks-cached
-          resource: pivotal-buildpack-cached
-          passed: [ buildpack-release ]
-        - get: buildpack
-          resource: buildpack-master
-          passed: [ buildpack-release ]
-      - task: finalize-buildpack
-        file: buildpacks-ci/tasks/finalize-buildpack/task.yml
-        privileged: true
-      - task: write-pivnet-metadata
-        file: buildpacks-ci/tasks/write-buildpack-pivnet-metadata/task.yml
-        params:
-          BUILDPACK: <%= language %>
-        privileged: true
-      - put: pivnet-buildpack-metadata
-        params:
-          repository: pivnet-buildpack-metadata-artifacts
-          rebase: true
+#  - name: write-pivnet-metadata
+#    serial: true
+#    public: true
+#    plan:
+#      - aggregate:
+#        - get: buildpacks-ci
+#        - get: pivnet-buildpack-metadata
+#        - get: pivotal-buildpacks-cached
+#          resource: pivotal-buildpack-cached
+#          passed: [ buildpack-release ]
+#        - get: buildpack
+#          resource: buildpack-master
+#          passed: [ buildpack-release ]
+#      - task: finalize-buildpack
+#        file: buildpacks-ci/tasks/finalize-buildpack/task.yml
+#        privileged: true
+#      - task: write-pivnet-metadata
+#        file: buildpacks-ci/tasks/write-buildpack-pivnet-metadata/task.yml
+#        params:
+#          BUILDPACK: <%= language %>
+#        privileged: true
+#      - put: pivnet-buildpack-metadata
+#        params:
+#          repository: pivnet-buildpack-metadata-artifacts
+#          rebase: true
 
-  - name: release-to-pivnet
-    public: true
-    plan:
-      - get: pivotal-buildpack-cached
-        passed: [ write-pivnet-metadata ]
-      - get: pivnet-buildpack-metadata
-        passed: [ write-pivnet-metadata ]
-        trigger: true
-      - put: pivnet-production
-        params:
-          file_glob: pivotal-buildpack-cached/<%= language %>_buildpack-cached-v*.zip
-          s3_filepath_prefix: product-files/buildpacks
-          metadata_file: pivnet-buildpack-metadata/pivnet-metadata/<%= language %>.yml
+#  - name: release-to-pivnet
+#    public: true
+#    plan:
+#      - get: pivotal-buildpack-cached
+#        passed: [ write-pivnet-metadata ]
+#      - get: pivnet-buildpack-metadata
+#        passed: [ write-pivnet-metadata ]
+#        trigger: true
+#      - put: pivnet-production
+#        params:
+#          file_glob: pivotal-buildpack-cached/<%= language %>_buildpack-cached-v*.zip
+#          s3_filepath_prefix: product-files/buildpacks
+#          metadata_file: pivnet-buildpack-metadata/pivnet-metadata/<%= language %>.yml
 <% end %>
   - name: specs-edge-aws-develop
     serial: true
@@ -603,12 +510,12 @@ jobs: ##########################################################################
           put: cf-edge-aws-environments
           params:
             release: cf-environments
-  - name: specs-lts-aws-develop
+  - name: specs-lts-develop
     serial: true
     public: true
     plan:
       - put: cf-environments
-        resource: cf-lts-aws-environments
+        resource: cf-lts-environments
         params:
           acquire: true
       - aggregate:

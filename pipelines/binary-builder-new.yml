@@ -1,0 +1,332 @@
+  ## Git Repos ##
+resources:
+  - name: binary-builder
+    type: git
+    source:
+      uri: {{binary-builder-git-uri}}
+      branch: power-support-part1
+  - name: buildpacks-ci-image
+    type: docker-image
+    source:
+      repository: 140.211.168.97:5000/buildpacks/ci
+      tag: "latest"
+      insecure_registries: ["140.211.168.97:5000"]
+      username: {{username}}
+      password: {{password}}
+  - name: buildpacks-ci
+    type: git
+    source:
+      uri: {{buildpacks-ci-git-uri-public}}
+      branch: {{buildpacks-ci-git-uri-public-branch}}
+
+  - name: builds-out
+    type: git
+    source:
+      branch: binary-builds
+      private_key: {{buildpacks-ci-private-key}}
+      uri: {{buildpacks-ci-git-uri}}
+# php php7 dotnet
+<% %w(bower go bundler composer  glide godep httpd jruby  python node nginx ruby).each do |dep| %>
+  - name: <%= dep %>-builds
+    type: git
+    source:
+      branch: binary-builds
+      private_key: {{buildpacks-ci-private-key}}
+      uri: {{buildpacks-ci-git-uri}}
+      paths: [ <%= dep %>-builds.yml ]
+
+  - name: <%= dep %>-built-output
+    type: git
+    source:
+      branch: binary-built-output
+      private_key: {{buildpacks-ci-private-key}}
+      uri: {{buildpacks-ci-git-uri}}
+      paths: [ <%= dep %>-built.yml ]
+<% end %>
+# dotnet
+<% %w(bower composer  glide godep nginx node).each do |auto_dep| %>
+  - name: <%= auto_dep %>-builds-in
+    type: git
+    source:
+      branch: binary-builds
+      private_key: {{buildpacks-ci-private-key}}
+      uri: {{buildpacks-ci-git-uri}}
+      paths: [ <%= auto_dep %>-builds.yml ]
+<% end %>
+
+<% %w(bower composer dotnet glide godep nginx node).each do |auto_new| %>
+  - name: <%= auto_new %>-new-releases
+    type: git
+    source:
+      uri: {{buildpacks-ci-git-uri}}
+      branch: new-release-notifications
+      private_key: {{buildpacks-ci-private-key}}
+      paths: [ <%= auto_new %>-new.yml ]
+<% end %>
+
+# php dotnet-core
+<% %w(go nodejs ruby staticfile).each do |language| %>
+  - name: <%= language %>-buildpack
+    type: git
+    source:
+      uri: git@github.com:<%= organization %>/<%= language %>-buildpack.git
+      private_key: {{buildpack-private-key}}
+      branch: develop
+      ignore_paths:
+        - VERSION
+        - CHANGELOG
+<% end %>
+
+  ## Resource Pools ##
+
+  - name: cf-edge-environments
+    type: pool
+    source:
+      branch: resource-pools
+      pool: cf-edge-environments
+      private_key: {{buildpacks-ci-private-key}}
+      uri: {{buildpacks-ci-git-uri}}
+
+ ## Docker Images ##
+
+  - name: docker-cflinuxfs2-rootfs
+    type: docker-image
+    source:
+      repository: ppc64le/cflinuxfs2
+
+
+groups: ###############################################################################################################
+
+  - name: enqueue-automated-builds
+    jobs:
+    # dotnet
+<% %w(bower composer glide godep nginx node).each do |auto_dep| %>
+    - trigger-<%= auto_dep %>-build
+<% end %>
+
+  - name: automated-builds
+    jobs:
+    # dotnet
+<% %w(bower composer  glide godep nginx node).each do |auto_dep| %>
+    - build-<%= auto_dep %>
+<% end %>
+# , php: ["nginx", "composer"], 'dotnet-core' => ['dotnet', 'node', 'bower']
+<% {go: ["godep", "glide"], staticfile: ["nginx"], nodejs: ["node"], ruby: ["node"]}.each do |buildpack, dependencies| %>
+  <% dependencies.each do |dependency| %>
+    - update-<%= dependency %>-in-<%= buildpack %>-buildpack
+  <% end %>
+<% end %>
+
+  - name: manual-builds
+    jobs:
+    # php php7
+<% %w(go ruby jruby bundler python httpd).each do |dependency| %>
+    - build-<%= dependency %>
+<% end %>
+
+  - name: binary-builder-specs
+    jobs:
+      - binary-builder-specs
+
+jobs: #################################################################################################################
+
+  - name: binary-builder-specs
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: buildpacks-ci
+        - get: buildpacks-ci-image
+        - get: docker-cflinuxfs2-rootfs
+          trigger: true
+        - get: binary-builder
+          trigger: true
+      - do:
+      # php5 php7 php5_with_oracle php7_with_oracle dotnet
+        <% integration_spec_names = %w(bundler glide go godep httpd jruby nginx nodejs  python ruby url_output yaml_flag ) %>
+        - task: all-expected-integration-specs-will-run
+          file: buildpacks-ci/tasks/check-for-binary-builder-integration-spec-presence/task-power.yml
+          image: buildpacks-ci-image
+          privileged: true
+          params:
+            SPEC_NAMES: <%= integration_spec_names.join(',') %>
+        - task: all-unit-tests
+          image: docker-cflinuxfs2-rootfs
+          privileged: true
+          file: buildpacks-ci/tasks/run-binary-builder-unit-specs/task-power.yml
+          params:
+            RUBYGEM_MIRROR: {{rubygem-mirror}}
+        - aggregate:
+          <% integration_spec_names.each do |spec_name| %>
+          - task: integration-<%= spec_name %>
+            image: docker-cflinuxfs2-rootfs
+            file: buildpacks-ci/tasks/run-binary-builder-integration-specs/task-power.yml
+            params:
+              SPEC_TO_RUN: <%= spec_name %>
+              RUBYGEM_MIRROR: {{rubygem-mirror}}
+              RUN_ORACLE_PHP_TESTS: <%= run_oracle_php_tests %>
+            privileged: true
+          <% end %>
+# php php7
+<% %w(go ruby jruby bundler python httpd).each do |dependency| %>
+  - name: build-<%= dependency %>
+    serial: true
+    public: true
+    disable_manual_trigger: true # instead, trigger jobs by pushing yaml to buildpacks-ci:binary-builds
+    plan:
+      - aggregate:
+        - get: builds-yaml
+          resource: <%= dependency %>-builds
+          trigger: true
+        - get: binary-builder
+          passed: [binary-builder-specs]
+        - get: docker-cflinuxfs2-rootfs
+        - get: buildpacks-ci
+        - get: built-yaml
+          resource: <%= dependency %>-built-output
+      - do:
+        - task: build-binary
+          file: buildpacks-ci/tasks/build-binary/task-power.yml
+          image: docker-cflinuxfs2-rootfs
+          params:
+            BINARY_NAME: <%= dependency %>
+            GIT_SSH_KEY: {{buildpacks-ci-private-key}}
+            RUBYGEM_MIRROR: {{rubygem-mirror}}
+            EXCLUDE_ON_PPC64LE: true
+            BINARY_BUILDER_PLATFORM: {{binary-builder-platform}}
+            BINARY_BUILDER_OS_NAME: {{binary-builder-os-name}}
+          privileged: true
+        - task: push-binary
+          file: buildpacks-ci/tasks/push-binary/task.yml
+          image: docker-cflinuxfs2-rootfs
+          params:
+            BINARY_NAME: <%= dependency %>
+            BUCKET_NAME: {{buildpacks-binaries-s3-bucket}}
+            EXCLUDE_ON_PPC64LE: true
+            AWS_ACCESS_KEY_ID: {{pivotal-buildpacks-s3-access-key}}
+            AWS_SECRET_ACCESS_KEY: {{pivotal-buildpacks-s3-secret-key}}
+            AWS_DEFAULT_REGION: us-east-1
+          privileged: true
+        - put: builds-out
+          params:
+            repository: builds-yaml-artifacts
+            rebase: true
+<% end %>
+# dotnet
+<% %w(bower godep  composer glide nginx node).each do |dependency| %>
+  - name: trigger-<%= dependency %>-build
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: buildpacks-ci
+        - get: docker-cflinuxfs2-rootfs
+        - get: new-releases
+          resource: <%= dependency %>-new-releases
+          trigger: true
+        - get: binary-builds
+          resource: <%= dependency %>-builds
+      - task: queue-binary-build
+        image: docker-cflinuxfs2-rootfs
+        file: buildpacks-ci/tasks/queue-dependency-build/task.yml
+        privileged: true
+        params:
+          DEPENDENCY: <%= dependency %>
+      - put: <%= dependency %>-builds
+        params:
+          repository: binary-builds-artifacts
+          rebase: true
+
+  - name: build-<%= dependency %>
+    serial: true
+    public: true
+    plan:
+      - aggregate:
+        - get: built-yaml
+          resource: <%= dependency %>-built-output
+        - get: builds-yaml
+          resource: <%= dependency %>-builds-in
+          version: every
+          trigger: true
+        - get: docker-cflinuxfs2-rootfs
+        - get: binary-builder
+          passed: [binary-builder-specs]
+        - get: buildpacks-ci
+      - do:
+        - task: build-binary
+          image: docker-cflinuxfs2-rootfs
+          file: buildpacks-ci/tasks/build-binary/task-power.yml
+          params:
+            GIT_SSH_KEY: {{buildpacks-ci-private-key}}
+            BINARY_NAME: <%= dependency %>
+            RUBYGEM_MIRROR: {{rubygem-mirror}}
+            BINARY_BUILDER_PLATFORM: {{binary-builder-platform}}
+            BINARY_BUILDER_OS_NAME: {{binary-builder-os-name}}
+          privileged: true
+        - task: push-binary
+          image: docker-cflinuxfs2-rootfs
+          file: buildpacks-ci/tasks/push-binary/task-power.yml
+          params:
+            BINARY_NAME: <%= dependency %>
+            BUCKET_NAME: {{buildpacks-binaries-s3-bucket}}
+            AWS_ACCESS_KEY_ID: {{pivotal-buildpacks-s3-access-key}}
+            AWS_SECRET_ACCESS_KEY: {{pivotal-buildpacks-s3-secret-key}}
+            AWS_DEFAULT_REGION: us-east-1
+          privileged: true
+        - put: builds-out
+          resource: <%= dependency %>-built-output
+          params:
+            repository: builds-yaml-artifacts
+            rebase: true
+<% end %>
+# php: ["nginx", "composer"], 'dotnet-core' => ['dotnet', 'node', 'bower']
+<% {go: ["godep", "glide"], staticfile: ["nginx"], nodejs: ["node"], ruby: ["node"] }.each do |buildpack, dependencies| %>
+  <% dependencies.each do |dependency| %>
+  - name: update-<%= dependency %>-in-<%= buildpack %>-buildpack
+    serial: true
+    public: true
+    plan:
+      - do:
+        - aggregate:
+          - get: buildpacks-ci
+          - get: buildpack
+            resource: <%= buildpack %>-buildpack
+          - get: docker-cflinuxfs2-rootfs
+          - get: built-out
+            resource: <%= dependency %>-built-output
+            passed: [ build-<%= dependency %> ]
+            version: every
+            trigger: true
+        - task: update-dependency-in-manifests
+          file: buildpacks-ci/tasks/update-dependency-in-buildpack/task.yml
+          image: docker-cflinuxfs2-rootfs
+          privileged: true
+          params:
+            BUILDPACK_NAME: <%= buildpack %>
+            DEPENDENCY: <%= dependency %>
+            BUILDPACK_DEPENDENCIES_HOST_DOMAIN: {{buildpack-dependencies-host-domain}}
+        - put: cf-environments
+          resource: cf-edge-environments
+          params:
+            acquire: true
+        - do:
+          - task: rspec
+            file: buildpacks-ci/tasks/run-buildpack-specs-before-auto-update/task.yml
+            image: docker-cflinuxfs2-rootfs
+            privileged: true
+            params:
+              STACKS: cflinuxfs2
+              CF_PASSWORD: {{ci-cf-password}}
+              RUBYGEM_MIRROR: {{rubygem-mirror}}
+              DEPLOYMENT_NAME: {{deployment_name}}
+              DOMAIN_NAME: {{domain-name}}
+          - put: <%= buildpack %>-buildpack
+            params:
+              repository: buildpack-artifacts
+              rebase: true
+          ensure:
+            put: cf-edge-environments
+            params:
+              release: cf-environments
+  <% end %>
+<% end %>

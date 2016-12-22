@@ -1,8 +1,9 @@
-FROM 140.211.168.97:5000/ruby:2.3.1
+FROM 140.211.168.97:5000/ruby:2.3.1-16
 
 ENV LANG="C.UTF-8"
 
-RUN apt-get upgrade && apt-get update
+RUN mkdir -p /etc/docker && echo "{}" >/etc/docker/daemon.json
+RUN apt-get update
 RUN apt-get -y install \
   aufs-tools \
   curl \
@@ -14,24 +15,25 @@ RUN apt-get -y install \
   libsqlite3-dev \
   module-init-tools \
   npm \
-  php5 \
+  php \
   python-dev \
   python-pip \
   shellcheck \
   wget \
-  zip
+  zip \
+  docker.io
 
 #RUN curl -sSL https://get.docker.com/ | sh
 
-RUN wget https://master.dockerproject.org/linux/ppc64le/dockerd \
-          https://master.dockerproject.org/linux/ppc64le/docker-proxy \
-          https://master.dockerproject.org/linux/ppc64le/docker-runc \
-          https://master.dockerproject.org/linux/ppc64le/docker \
-          https://master.dockerproject.org/linux/ppc64le/docker-containerd-ctr \
-          https://master.dockerproject.org/linux/ppc64le/docker-init \
-          https://master.dockerproject.org/linux/ppc64le/docker-containerd \
-          https://master.dockerproject.org/linux/ppc64le/docker-containerd-shim -P /usr/local/bin/ \
-    && chmod +x /usr/local/bin/*
+#RUN wget https://master.dockerproject.org/linux/ppc64le/dockerd \
+#          https://master.dockerproject.org/linux/ppc64le/docker-proxy \
+#          https://master.dockerproject.org/linux/ppc64le/docker-runc \
+#          https://master.dockerproject.org/linux/ppc64le/docker \
+#          https://master.dockerproject.org/linux/ppc64le/docker-containerd-ctr \
+#          https://master.dockerproject.org/linux/ppc64le/docker-init \
+#          https://master.dockerproject.org/linux/ppc64le/docker-containerd \
+#          https://master.dockerproject.org/linux/ppc64le/docker-containerd-shim -P /usr/local/bin/ \
+#    && chmod +x /usr/local/bin/*
 
 #RUN wget -q https://releases.hashicorp.com/vagrant/1.8.1/vagrant_1.8.1_x86_64.deb \
 #  && dpkg -i vagrant_1.8.1_x86_64.deb \
@@ -51,9 +53,9 @@ RUN mv /usr/bin/composer.phar /usr/bin/composer
 
 # download the CF-CLI
 #RUN wget -O- 'https://cli.run.pivotal.io/stable?release=linux64-binary&version=6.15.0&source=github-rel'| tar xz -C /usr/bin
-RUN wget -P /usr/bin http://ftp.unicamp.br/pub/ppc64el/ubuntu/14_04/cloud-foundry/cf && chmod +x /usr/bin/cf
+RUN wget http://ftp.unicamp.br/pub/ppc64el/ubuntu/14_04/cloud-foundry/cf-6.23.1-ppc64le -O /usr/bin/cf && chmod +x /usr/bin/cf
 
-#RUN cf install-plugin Diego-Enabler -f -r CF-Community
+RUN cf install-plugin -f https://s3.amazonaws.com/dev-power-buildpacks/diego-enabler_linux_ppc64le
 
 #download spiff for spiffy things
 #RUN wget -O- 'https://github.com/cloudfoundry-incubator/spiff/releases/download/v1.0.7/spiff_linux_amd64.zip' | funzip > /usr/bin/spiff
@@ -63,10 +65,13 @@ RUN wget -P /usr/bin http://ftp.unicamp.br/pub/ppc64el/ubuntu/14_04/cloud-foundr
 #RUN wget -O- https://github.com/github/hub/releases/download/v2.2.1/hub-linux-amd64-2.2.1.tar.gz | tar xz -C /usr/bin --strip-components=1 hub-linux-amd64-2.2.1/hub
 
 # when docker container starts, ensure login scripts run
-COPY build/*.sh /etc/profile.d/
+COPY build/go.sh /etc/profile.d/
+COPY build/ruby.sh /etc/profile.d/
+COPY build/ssh-agent.sh /etc/profile.d/
 
 RUN gem install bundler
 COPY Gemfile /usr/local/Gemfile
+COPY Gemfile.lock /usr/local/Gemfile.lock
 RUN cd /usr/local && bundle install
 
 #install fly-cli

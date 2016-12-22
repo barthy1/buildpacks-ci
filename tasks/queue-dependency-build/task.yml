@@ -10,10 +10,11 @@ outputs:
 run:
   path: bash
   args:
-    - -cl
+    - -c
     - |
       set -e
       pushd buildpacks-ci
+        bundle install
         bundle exec ./tasks/queue-dependency-build/run.rb
       popd
       rsync -a binary-builds/ binary-builds-artifacts

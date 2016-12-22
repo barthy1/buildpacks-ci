@@ -1,4 +1,4 @@
-
+#!/bin/bash
 
 set -o errexit
 set -o nounset
@@ -28,6 +28,6 @@ fi
 bundle install --jobs="$(nproc)" --no-cache
 
 for stack in $STACKS; do
-  bundle exec buildpack-build --uncached --stack="$stack" --host="$DEPLOYMENT_NAME.$BOSH_LITE_DOMAIN_NAME"
-  bundle exec buildpack-build --cached --stack="$stack" --host="$DEPLOYMENT_NAME.$BOSH_LITE_DOMAIN_NAME"
+  bundle exec buildpack-build --uncached --stack="$stack" --host="140.211.168.100.$DOMAIN_NAME"
+  bundle exec buildpack-build --cached --stack="$stack" --host="140.211.168.100.$DOMAIN_NAME"
 done

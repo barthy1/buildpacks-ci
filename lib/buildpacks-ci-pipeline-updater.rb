@@ -65,7 +65,7 @@ class BuildpacksCIPipelineUpdater
       BuildpacksCIPipelineUpdateCommand.new.run!(
         concourse_target_name: concourse_target_name,
         pipeline_name: "#{language}-buildpack",
-        config_generation_command: "erb language=#{language} organization=#{organization} pipelines/templates/buildpack.yml",
+        config_generation_command: "erb language=#{language} organization=#{organization} pipelines/templates/buildpack-power.yml",
         pipeline_variable_filename: pipeline_variables_filename,
         options: options
       )

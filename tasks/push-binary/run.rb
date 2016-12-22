@@ -3,6 +3,8 @@
 
 binary_name = ENV['BINARY_NAME']
 bucket_name= ENV['BUCKET_NAME']
+
+puts "AWS_DEFAULT_REGION - #{ENV['AWS_DEFAULT_REGION']}"
 file_path   = Dir.glob("binary-builder-artifacts/#{binary_name}*.{tar.gz,tgz,phar}").first
 unless file_path
   puts 'No binaries detected for upload.'
@@ -19,6 +21,7 @@ if binary_name == "composer" then
 else
   aws_url =  "s3://#{bucket_name}/dependencies/#{binary_name}"
 end
+
 
 
 if `aws s3 ls #{aws_url}/`.include? file_name

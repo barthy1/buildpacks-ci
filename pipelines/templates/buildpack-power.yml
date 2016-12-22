@@ -21,6 +21,11 @@ resources: #####################################################################
       uri: git@github.com:<%= git_repo_organization %>/<%= language %>-buildpack.git
       private_key: {{buildpack-private-key}}
       branch: develop
+      git_config:
+      - name: user.email
+        value: {{name}}
+      - name: user.name
+        value: {{email}}
       ignore_paths:
         - VERSION
         - CHANGELOG
@@ -43,16 +48,6 @@ resources: #####################################################################
     type: git
     source:
       uri: https://github.com/cloudfoundry/brats.git
-
-<% unless language == 'multi' %>
-  - name: pivnet-buildpack-metadata
-    type: git
-    source:
-      branch: master
-      private_key: {{pivotal-cf-buildpacks-ci-robots}}
-      uri: git@github.com:pivotal-cf/buildpacks-ci-robots.git # pivotal-cf because pivnet is not foundation's
-      paths: [ pivnet-metadata/<%= language %>.yml ]
-<% end %>
 
 <% unless language == 'binary' || language == 'multi' %>
   - name: compile-extensions
@@ -80,21 +75,21 @@ resources: #####################################################################
 #    source:
 #      user: <%= github_release_user %>
 #      repository: <%= language %>-buildpack
-#      access_token: {{buildpacks-github-token}}
+#      access_token: !!buildpacks-github-token}}
 
-  - name: buildpack-packager
-    type: github-release
-    source:
-      user: {{buildpacks-github-org}}
-      repository: buildpack-packager
-    #  access_token: !!buildpacks-github-token}}
+#  - name: buildpack-packager
+#    type: github-release
+#    source:
+#      user: {{buildpacks-github-org}}
+#      repository: buildpack-packager
+#    #  access_token: !!buildpacks-github-token}}
 
-  - name: machete
-    type: github-release
-    source:
-      user: {{buildpacks-github-org}}
-      repository: machete
-      #access_token: !!buildpacks-github-token}}
+#  - name: machete
+#    type: github-release
+#    source:
+#      user: {{buildpacks-github-org}}
+#      repository: machete
+#      #access_token: !!buildpacks-github-token}}
 
   ## S3 Buckets ##
 
@@ -131,15 +126,20 @@ jobs: ##########################################################################
     public: true
     plan:
       - get: buildpacks-ci
+        tags: [ppc64le]
       - get: buildpacks-ci-image
+        tags: [ppc64le]
       - get: buildpack
+        tags: [ppc64le]
         resource: buildpack-develop
         trigger: true
       - task: load-modules
+        tags: [ppc64le]
         image: buildpacks-ci-image
         file: buildpacks-ci/tasks/populate-php-modules-in-manifest/task-power.yml
         privileged: true
       - put: buildpack-develop
+        tags: [ppc64le]
         params:
           repository: updated-buildpack
           rebase: true
@@ -150,24 +150,34 @@ jobs: ##########################################################################
     plan:
       - aggregate:
         - get: buildpacks-ci
+          tags: [ppc64le]
         - get: buildpack
+          tags: [ppc64le]
           resource: buildpack-master
           trigger: true
         - get: pivotal-buildpack-cached
+          tags: [ppc64le]
         - get: pivotal-buildpack
+          tags: [ppc64le]
+        - get: buildpacks-ci-image
+          tags: [ppc64le]
       - do:
         - task: detect-and-upload
+          tags: [ppc64le]
           file: buildpacks-ci/tasks/detect-and-upload/task.yml
           privileged: true
+          image: buildpacks-ci-image
           params:
             GIT_REPO_ORG: <%= git_repo_organization %>
             BUILDPACK_NAME: <%= language %>-buildpack
             RUBYGEM_MIRROR: {{rubygem-mirror}}
         - put: pivotal-buildpack
+          tags: [ppc64le]
           params:
             from: buildpack-artifacts/.*_buildpack-v(.*).zip
             to: /buildpack-release-candidates/<%= language %>/
         - put: pivotal-buildpack-cached
+          tags: [ppc64le]
           params:
             from: buildpack-artifacts/.*_buildpack-cached-v(.*).zip
             to: /buildpack-release-candidates/<%= language %>/
@@ -181,20 +191,25 @@ jobs: ##########################################################################
           acquire: true
       - aggregate:
         - get: buildpacks-ci
+          tags: [ppc64le]
         - get: buildpack
+          tags: [ppc64le]
           passed: [ "detect-new-version-and-upload-artifacts" ]
           resource: buildpack-master
           trigger: true
         - get: pivotal-buildpacks
+          tags: [ppc64le]
           resource: pivotal-buildpack
           passed: [ "detect-new-version-and-upload-artifacts" ]
           trigger: true
         - get: pivotal-buildpacks-cached
+          tags: [ppc64le]
           resource: pivotal-buildpack-cached
           passed: [ "detect-new-version-and-upload-artifacts" ]
           trigger: true
       - do:
         - task: rspec
+          tags: [ppc64le]
           file: buildpacks-ci/tasks/run-buildpack-specs/task.yml
           params:
             STACKS: cflinuxfs2
@@ -213,19 +228,25 @@ jobs: ##########################################################################
     plan:
       - aggregate:
         - get: buildpacks-ci
+          tags: [ppc64le]
         - get: buildpacks-ci-image
+          tags: [ppc64le]
         - get: pivotal-buildpacks-cached
+          tags: [ppc64le]
           resource: pivotal-buildpack-cached
           passed: [ "specs-edge-master"]
           trigger: true
         - get: buildpack
+          tags: [ppc64le]
           passed: [ "specs-edge-master" ]
           resource: buildpack-master
           trigger: true
       - task: check tag not already added
+        tags: [ppc64le]
         image: buildpacks-ci-image
         file: buildpacks-ci/tasks/check-tag-not-already-added/task-power.yml
       - put: buildpack-master
+        tags: [ppc64le]
         params:
           repository: buildpack
           tag: buildpack/VERSION
@@ -267,28 +288,37 @@ jobs: ##########################################################################
     public: true
     plan:
       - put: cf-environments
+        tags: [ppc64le]
         resource: cf-environments
         params:
           acquire: true
       - aggregate:
         - get: buildpacks-ci
+          tags: [ppc64le]
         - get: brats
+          tags: [ppc64le]
         - get: buildpack
+          tags: [ppc64le]
           resource: buildpack-develop
           trigger: true
+        - get: buildpacks-ci-image
+          tags: [ppc64le]
       - do:
         - task: rspec
+          tags: [ppc64le]
           file: buildpacks-ci/tasks/run-buildpack-specs/task.yml
+          image: buildpacks-ci-image
           params:
             STACKS: cflinuxfs2
-            COMPOSER_GITHUB_OAUTH_TOKEN: {{composer-github-oauth-token}}
             CF_PASSWORD: {{ci-cf-password}}
             DOMAIN_NAME: 'xip.io'
             DEPLOYMENT_NAME: '140.211.168.170'
             RUBYGEM_MIRROR: {{rubygem-mirror}}
           privileged: true
         - task: brats
+          tags: [ppc64le]
           file: buildpacks-ci/tasks/run-brats/task.yml
+          privileged: true
           params:
             BRATS_BRANCH: develop
             CI_CF_USERNAME: {{ci-cf-username}}
@@ -297,8 +327,10 @@ jobs: ##########################################################################
             RUBYGEM_MIRROR: {{rubygem-mirror}}
             DOMAIN_NAME: 'xip.io'
             DEPLOYMENT_NAME: '140.211.168.170'
+
         ensure:
-          put: cf-edge-environments
+          put: cf-environments
+          tags: [ppc64le]
           params:
             release: cf-environments
 
@@ -309,64 +341,77 @@ jobs: ##########################################################################
     plan:
       - aggregate:
         - get: buildpacks-ci
+          tags: [ppc64le]
         - get: compile-extensions
+          tags: [ppc64le]
           trigger: true
         - get: buildpack
+          tags: [ppc64le]
           resource: buildpack-develop
+        - get: buildpacks-ci-image
       - task: update-compile-extensions
+        tags: [ppc64le]
         file: buildpacks-ci/tasks/update-compile-extensions/task.yml
         privileged: true
         params: { RUBYGEM_MIRROR: {{rubygem-mirror}}  }
+        image: buildpacks-ci-image
       - put: buildpack-develop
+        tags: [ppc64le]
         params:
           repository: buildpack-artifacts
           rebase: true
 <% end %>
-  - name: update-buildpack-packager
-    serial: true
-    public: true
-    plan:
-      - aggregate:
-        - get: buildpacks-ci
-        - get: gem
-          resource: buildpack-packager
-          trigger: true
-        - get: repo-with-gemfile
-          resource: buildpack-develop
-      - task: update-buildpack-packager
-        file: buildpacks-ci/tasks/update-gem-in-gemfile/task.yml
-        privileged: true
-        params:
-          RUBYGEM_MIRROR: {{rubygem-mirror}}
-          GEM_NAME: buildpack-packager
-          GEM_GIT_REPOSITORY: {{buildpack-packager-git-uri-public}}
-          GEMFILE_NAME: cf.Gemfile
-      - put: buildpack-develop
-        params:
-          repository: repo-with-gemfile-artifacts
-          rebase: true
-  - name: update-machete
-    serial: true
-    public: true
-    plan:
-      - aggregate:
-        - get: buildpacks-ci
-        - get: buildpacks-ci-image
-        - get: gem
-          resource: machete
-          trigger: true
-        - get: repo-with-gemfile
-          resource: buildpack-develop
-      - task: update-machete
-        image: buildpacks-ci-image
-        file: buildpacks-ci/tasks/update-gem-in-gemfile/task-power.yml
-        privileged: true
-        params:
-          RUBYGEM_MIRROR: {{rubygem-mirror}}
-          GEM_NAME: machete
-          GEM_GIT_REPOSITORY: {{machete-git-uri-public}}
-          GEMFILE_NAME: cf.Gemfile
-      - put: buildpack-develop
-        params:
-          repository: repo-with-gemfile-artifacts
-          rebase: true
+#  - name: update-buildpack-packager
+#    serial: true
+#    public: true
+#    plan:
+#      - aggregate:
+#        - get: buildpacks-ci
+#        - get: gem
+#          resource: buildpack-packager
+#          trigger: true
+#        - get: repo-with-gemfile
+#          resource: buildpack-develop
+#      - task: update-buildpack-packager
+#        file: buildpacks-ci/tasks/update-gem-in-gemfile/task.yml
+#        privileged: true
+#        params:
+#          RUBYGEM_MIRROR: {{rubygem-mirror}}
+#          GEM_NAME: buildpack-packager
+#          GEM_GIT_REPOSITORY: !!buildpack-packager-git-uri-public}}
+#          GEMFILE_NAME: cf.Gemfile
+#      - put: buildpack-develop
+#        params:
+#          repository: repo-with-gemfile-artifacts
+#          rebase: true
+#  - name: update-machete
+#    serial: true
+#    public: true
+#    plan:
+#      - aggregate:
+#        - get: buildpacks-ci
+#          tags: [ppc64le]
+#        - get: buildpacks-ci-image
+#          tags: [ppc64le]
+#        - get: gem
+#          tags: [ppc64le]
+#          resource: machete
+#          trigger: true
+#        - get: repo-with-gemfile
+#          tags: [ppc64le]
+#          resource: buildpack-develop
+#      - task: update-machete
+#        tags: [ppc64le]
+#        image: buildpacks-ci-image
+#        file: buildpacks-ci/tasks/update-gem-in-gemfile/task-power.yml
+#        privileged: true
+#        params:
+#          RUBYGEM_MIRROR: {{rubygem-mirror}}
+#          GEM_NAME: machete
+#          GEM_GIT_REPOSITORY: {{machete-git-uri-public}}
+#          GEMFILE_NAME: cf.Gemfile
+#      - put: buildpack-develop
+#        tags: [ppc64le]
+#        params:
+#          repository: repo-with-gemfile-artifacts
+#          rebase: true

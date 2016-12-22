@@ -1,3 +1,3 @@
 source 'https://rubygems.org'
 
-gem 'machete', git: 'https://github.com/cf-buildpacks/machete'
+gem 'machete', git: 'https://github.com/barthy1/machete'

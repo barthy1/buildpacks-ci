@@ -9,7 +9,7 @@ resources:
     type: docker-image
     source:
       repository: 140.211.168.97:5000/buildpacks/ci
-      tag: "latest"
+      tag: "16"
       insecure_registries: ["140.211.168.97:5000"]
       username: {{username}}
       password: {{password}}
@@ -87,6 +87,11 @@ resources:
       uri: git@github.com:<%= organization %>/<%= language %>-buildpack.git
       private_key: {{buildpack-private-key}}
       branch: develop
+      git_config:
+      - name: user.email
+        value: {{name}}
+      - name: user.name
+        value: {{email}}
       ignore_paths:
         - VERSION
         - CHANGELOG
@@ -261,9 +266,12 @@ jobs: ##########################################################################
         - get: binary-builds
           tags: [ppc64le]
           resource: <%= dependency %>-builds
+        - get: buildpacks-ci-image
+          tags: [ppc64le]
       - task: queue-binary-build
         image: docker-cflinuxfs2-rootfs
         tags: [ppc64le]
+        image: buildpacks-ci-image
         file: buildpacks-ci/tasks/queue-dependency-build/task.yml
         privileged: true
         params:
@@ -372,7 +380,7 @@ jobs: ##########################################################################
               STACKS: cflinuxfs2
               CF_PASSWORD: {{ci-cf-password}}
               RUBYGEM_MIRROR: {{rubygem-mirror}}
-              DEPLOYMENT_NAME: {{deployment_name}}
+              DEPLOYMENT_NAME1: '140.211.168.100'
               DOMAIN_NAME: {{domain-name}}
               BINARY_BUILDER_PLATFORM: {{binary-builder-platform}}
               BINARY_BUILDER_OS_NAME: {{binary-builder-os-name}}

@@ -12,6 +12,7 @@ resources:
       insecure_registries: ["140.211.168.97:5000"]
       username: {{username}}
       password: {{password}}
+      tag: "16"
 jobs:
   - name: ci-build
     serial: true

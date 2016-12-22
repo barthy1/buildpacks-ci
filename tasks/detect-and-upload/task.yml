@@ -11,7 +11,7 @@ outputs:
 run:
   path: bash
   args:
-    - -cl
+    - -c
     - |
       set -e
       pushd buildpacks-ci
